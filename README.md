@@ -3,7 +3,11 @@
 **v0.1 — first public beta.** A live ADS-B air traffic scope for the
 Commodore 64 Ultimate (C64U/Ultimate 64).
 
-![C64U Radar scope screen](assets/scope_preview.png)
+**v0.2 - range set via menu.** added new menu item to set range (3..99) multiples of 3
+
+**v0.3 - track table enhancements.** climb/descent glyphs, ground tracks in grey, auto QNH
+
+![C64U Radar scope screen](assets/v0.3asm radar.png)!
 
 The C64 can't do HTTPS, JSON, or geodesic math, so a small companion program
 does that on a Mac, Windows, Linux, or Raspberry Pi computer and streams a
@@ -25,10 +29,10 @@ third-party package, no account.
 
 ## Features
 
-- Hires bitmap scope, 9 nautical mile range with 3/6/9 nm rings.
+- Hires bitmap scope, customisable nautical mile range 3..99nm range rings.
 - Up to 8 simultaneous targets (VIC-II hardware sprite limit), shown as
   numbered diamonds with a directional stem for track/heading.
-- Callsign, aircraft type, altitude, and groundspeed for each target.
+- Callsign, aircraft type, altitude, climb/descent indicator and groundspeed for each target.
 - Center on any latitude/longitude, or a four-letter ICAO airport code
   (worldwide, via a cached OurAirports lookup).
 - The server finds the C64U on the LAN and pushes its own address into a
@@ -46,7 +50,8 @@ third-party package, no account.
    - **Linux**: run `executables/server_bundle/start_server_mac_linux.sh`.
    - Or directly: `python3 executables/server_bundle/ultimate_radar_server.py`
      (Python 3.9+).
-2. On the C64U: enable `Command Interface`, then run `executables/c64u_radar.prg`.
+2. On the C64U: enable `Command Interface`, then run `executables/c64u_radar.prg`
+   for the .c based version and /C64u_radar2.prg for the .6502 version. 
    Look under **Main Menu > MEMORY & ROMS** on the Commodore-branded C64
    Ultimate, or **Configure > C64 and Cartridge Settings** on other
    Ultimate 64 / 1541 Ultimate-II+ firmware. Menu location can vary by

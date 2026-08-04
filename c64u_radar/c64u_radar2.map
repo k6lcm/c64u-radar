@@ -1,0 +1,613 @@
+Modules list:
+-------------
+64u_radar2.asm.116664.0.o:
+    CODE              Offs=000000  Size=002042  Align=00001  Fill=0000
+    RODATA            Offs=000000  Size=00037E  Align=00001  Fill=0000
+    LOADADDR          Offs=000000  Size=000002  Align=00001  Fill=0000
+    EXEHDR            Offs=000000  Size=00000D  Align=00001  Fill=0000
+ultimate_lib.c.116664.1.o:
+    CODE              Offs=002042  Size=00137C  Align=00001  Fill=0000
+    RODATA            Offs=00037E  Size=000143  Align=00001  Fill=0000
+    BSS               Offs=000000  Size=000064  Align=00001  Fill=0000
+    DATA              Offs=000000  Size=000001  Align=00001  Fill=0000
+    UII_BSS           Offs=000000  Size=000302  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(_heap.o):
+    DATA              Offs=000001  Size=00000A  Align=00001  Fill=0000
+    ONCE              Offs=000000  Size=000010  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(add.o):
+    CODE              Offs=0033BE  Size=00001C  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(addeqsp.o):
+    CODE              Offs=0033DA  Size=000011  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(addysp.o):
+    CODE              Offs=0033EB  Size=00000E  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(bneg.o):
+    CODE              Offs=0033F9  Size=00000E  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(decsp1.o):
+    CODE              Offs=003407  Size=000009  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(decsp2.o):
+    CODE              Offs=003410  Size=00000D  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(decsp3.o):
+    CODE              Offs=00341D  Size=00000D  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(decsp4.o):
+    CODE              Offs=00342A  Size=00000D  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(decsp5.o):
+    CODE              Offs=003437  Size=00000D  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(free.o):
+    CODE              Offs=003444  Size=0001D3  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(icmp.o):
+    CODE              Offs=003617  Size=00002E  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(incax1.o):
+    CODE              Offs=003645  Size=000007  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(incax2.o):
+    CODE              Offs=00364C  Size=000007  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(incax3.o):
+    CODE              Offs=003653  Size=000005  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(incaxy.o):
+    CODE              Offs=003658  Size=00000B  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(incsp1.o):
+    CODE              Offs=003663  Size=000007  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(incsp2.o):
+    CODE              Offs=00366A  Size=000016  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(incsp3.o):
+    CODE              Offs=003680  Size=000005  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(incsp4.o):
+    CODE              Offs=003685  Size=000005  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(incsp5.o):
+    CODE              Offs=00368A  Size=000005  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(incsp6.o):
+    CODE              Offs=00368F  Size=000005  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(incsp7.o):
+    CODE              Offs=003694  Size=000005  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(incsp8.o):
+    CODE              Offs=003699  Size=000005  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(ldaxsp.o):
+    CODE              Offs=00369E  Size=000009  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(ldptr1sp.o):
+    CODE              Offs=0036A7  Size=00000C  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(malloc.o):
+    CODE              Offs=0036B3  Size=000110  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(memset.o):
+    CODE              Offs=0037C3  Size=00005D  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(pusha.o):
+    CODE              Offs=003820  Size=000016  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(pushax.o):
+    CODE              Offs=003836  Size=00001A  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(pushwsp.o):
+    CODE              Offs=003850  Size=00001C  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(staxsp.o):
+    CODE              Offs=00386C  Size=00000B  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(strlen.o):
+    CODE              Offs=003877  Size=000016  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(subeqsp.o):
+    CODE              Offs=00388D  Size=000015  Align=00001  Fill=0000
+G:\Emulation\Commodore 64\Programming\Compilers\cc65-snapshot-win64\lib/c64.lib(zeropage.o):
+    ZEROPAGE          Offs=000000  Size=00001A  Align=00001  Fill=0000
+
+
+Segment list:
+-------------
+Name                   Start     End    Size  Align
+----------------------------------------------------
+ZEROPAGE              000002  00001B  00001A  00001
+LOADADDR              0007FF  000800  000002  00001
+EXEHDR                000801  00080D  00000D  00001
+CODE                  00080E  0040AF  0038A2  00001
+RODATA                0040B0  004570  0004C1  00001
+DATA                  004571  00457B  00000B  00001
+BSS                   00457C  0045DF  000064  00001
+ONCE                  00457C  00458B  000010  00001
+UII_BSS               00CB00  00CE01  000302  00001
+
+
+Exports list by name:
+---------------------
+__BSS_RUN__               00457C RLA    __BSS_SIZE__              000064 REA    
+__EXEHDR__                000801 RLA    __HEADER_LAST__           00080E RLA    
+__HIMEM__                 005A00 REA    __LOADADDR__              0007FF RLA    
+__ONCE_RUN__              00457C RLA    __STACKSIZE__             000280 REA    
+___bzero                  003FD1 RLA    ___heapend                004576 RLA    
+___heapfirst              004578 RLA    ___heaplast               00457A RLA    
+___heapptr                004574 RLA    _free                     003C52 RLA    
+_malloc                   003EC1 RLA    _strlen                   004085 RLA    
+_uii_abort                00361A RLA    _uii_data                 00CB80 RLA    
+_uii_socketclose          003132 RLA    _uii_socketread           003174 RLA    
+_uii_socketwrite          0031CE RLA    _uii_status               00CB00 RLA    
+_uii_tcpconnect           003108 RLA    addeq0sp                  003BE8 RLA    
+addysp                    003BFA RLA    bnega                     003C0B RLA    
+c_sp                      000002 RLZ    decsp1                    003C15 RLA    
+decsp2                    003C1E RLA    decsp3                    003C2B RLA    
+decsp4                    003C38 RLA    decsp5                    003C45 RLA    
+incax1                    003E53 RLA    incax2                    003E5A RLA    
+incax3                    003E61 RLA    incax4                    003E66 RLA    
+incaxy                    003E68 RLA    incsp1                    003E71 RLA    
+incsp2                    003E80 RLA    incsp3                    003E8E RLA    
+incsp4                    003E93 RLA    incsp5                    003E98 RLA    
+incsp6                    003E9D RLA    incsp7                    003EA2 RLA    
+incsp8                    003EA7 RLA    initheap                  00457C  LAI   
+ldax0sp                   003EAC RLA    ldaxysp                   003EAE RLA    
+ldptr10sp                 003EB5 RLA    ldptr1ysp                 003EB7 RLA    
+popax                     003E78 RLA    ptr1                      00000A RLZ    
+ptr2                      00000C RLZ    ptr3                      00000E RLZ    
+ptr4                      000010 RLZ    push0                     004044 RLA    
+pusha                     004032 RLA    pusha0                    004046 RLA    
+pushax                    004048 RLA    pushw0sp                  00405E RLA    
+pushwysp                  004060 RLA    sreg                      000004 RLZ    
+stax0sp                   00407A RLA    staxysp                   00407C RLA    
+subeq0sp                  00409B RLA    tmp1                      000012 RLZ    
+tmp2                      000013 RLZ    tmp3                      000014 RLZ    
+tmp4                      000015 RLZ    tosaddax                  003BCE RLA    
+tosicmp                   003E27 RLA    
+
+
+Exports list by value:
+----------------------
+c_sp                      000002 RLZ    sreg                      000004 RLZ    
+ptr1                      00000A RLZ    ptr2                      00000C RLZ    
+ptr3                      00000E RLZ    ptr4                      000010 RLZ    
+tmp1                      000012 RLZ    tmp2                      000013 RLZ    
+tmp3                      000014 RLZ    tmp4                      000015 RLZ    
+__BSS_SIZE__              000064 REA    __STACKSIZE__             000280 REA    
+__LOADADDR__              0007FF RLA    __EXEHDR__                000801 RLA    
+__HEADER_LAST__           00080E RLA    _uii_tcpconnect           003108 RLA    
+_uii_socketclose          003132 RLA    _uii_socketread           003174 RLA    
+_uii_socketwrite          0031CE RLA    _uii_abort                00361A RLA    
+tosaddax                  003BCE RLA    addeq0sp                  003BE8 RLA    
+addysp                    003BFA RLA    bnega                     003C0B RLA    
+decsp1                    003C15 RLA    decsp2                    003C1E RLA    
+decsp3                    003C2B RLA    decsp4                    003C38 RLA    
+decsp5                    003C45 RLA    _free                     003C52 RLA    
+tosicmp                   003E27 RLA    incax1                    003E53 RLA    
+incax2                    003E5A RLA    incax3                    003E61 RLA    
+incax4                    003E66 RLA    incaxy                    003E68 RLA    
+incsp1                    003E71 RLA    popax                     003E78 RLA    
+incsp2                    003E80 RLA    incsp3                    003E8E RLA    
+incsp4                    003E93 RLA    incsp5                    003E98 RLA    
+incsp6                    003E9D RLA    incsp7                    003EA2 RLA    
+incsp8                    003EA7 RLA    ldax0sp                   003EAC RLA    
+ldaxysp                   003EAE RLA    ldptr10sp                 003EB5 RLA    
+ldptr1ysp                 003EB7 RLA    _malloc                   003EC1 RLA    
+___bzero                  003FD1 RLA    pusha                     004032 RLA    
+push0                     004044 RLA    pusha0                    004046 RLA    
+pushax                    004048 RLA    pushw0sp                  00405E RLA    
+pushwysp                  004060 RLA    stax0sp                   00407A RLA    
+staxysp                   00407C RLA    _strlen                   004085 RLA    
+subeq0sp                  00409B RLA    ___heapptr                004574 RLA    
+___heapend                004576 RLA    ___heapfirst              004578 RLA    
+___heaplast               00457A RLA    initheap                  00457C  LAI   
+__BSS_RUN__               00457C RLA    __ONCE_RUN__              00457C RLA    
+__HIMEM__                 005A00 REA    _uii_status               00CB00 RLA    
+_uii_data                 00CB80 RLA    
+
+
+Imports list:
+-------------
+__BSS_RUN__ ([linker generated]):
+    _heap.o                   common/_heap.s:8
+__BSS_SIZE__ ([linker generated]):
+    _heap.o                   common/_heap.s:8
+__EXEHDR__ (64u_radar2.asm.116664.0.o):
+    [linker generated]        cfg/c64u_radar_safe.cfg:6
+__HEADER_LAST__ ([linker generated]):
+    [linker generated]        cfg/c64u_radar_safe.cfg:43
+    [linker generated]        cfg/c64u_radar_safe.cfg:43
+__HIMEM__ ([linker generated]):
+    [linker generated]        cfg/c64u_radar_safe.cfg:44
+    [linker generated]        cfg/c64u_radar_safe.cfg:43
+__LOADADDR__ (64u_radar2.asm.116664.0.o):
+    [linker generated]        cfg/c64u_radar_safe.cfg:5
+__ONCE_RUN__ ([linker generated]):
+    [linker generated]        cfg/c64u_radar_safe.cfg:44
+    [linker generated]        cfg/c64u_radar_safe.cfg:44
+__STACKSIZE__ ([linker generated]):
+    _heap.o                   common/_heap.s:8
+    [linker generated]        cfg/c64u_radar_safe.cfg:44
+___bzero (memset.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+___heapend (_heap.o):
+    malloc.o                  /home/runner/work/cc65/cc65/asminc/_heap.inc:33
+___heapfirst (_heap.o):
+    malloc.o                  /home/runner/work/cc65/cc65/asminc/_heap.inc:34
+    free.o                    /home/runner/work/cc65/cc65/asminc/_heap.inc:34
+___heaplast (_heap.o):
+    malloc.o                  /home/runner/work/cc65/cc65/asminc/_heap.inc:35
+    free.o                    /home/runner/work/cc65/cc65/asminc/_heap.inc:35
+___heapptr (_heap.o):
+    malloc.o                  /home/runner/work/cc65/cc65/asminc/_heap.inc:32
+    free.o                    /home/runner/work/cc65/cc65/asminc/_heap.inc:32
+_free (free.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:16
+_malloc (malloc.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:15
+_strlen (strlen.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:13
+_uii_abort (ultimate_lib.c.116664.1.o):
+    64u_radar2.asm.116664.0.o 64u_radar2.asm:71
+_uii_data (ultimate_lib.c.116664.1.o):
+    64u_radar2.asm.116664.0.o 64u_radar2.asm:77
+_uii_socketclose (ultimate_lib.c.116664.1.o):
+    64u_radar2.asm.116664.0.o 64u_radar2.asm:75
+_uii_socketread (ultimate_lib.c.116664.1.o):
+    64u_radar2.asm.116664.0.o 64u_radar2.asm:73
+_uii_socketwrite (ultimate_lib.c.116664.1.o):
+    64u_radar2.asm.116664.0.o 64u_radar2.asm:74
+_uii_status (ultimate_lib.c.116664.1.o):
+    64u_radar2.asm.116664.0.o 64u_radar2.asm:76
+_uii_tcpconnect (ultimate_lib.c.116664.1.o):
+    64u_radar2.asm.116664.0.o 64u_radar2.asm:72
+addeq0sp (addeqsp.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+addysp (addysp.o):
+    incsp8.o                  runtime/incsp8.s:8
+    incsp7.o                  runtime/incsp7.s:8
+    incsp6.o                  runtime/incsp6.s:8
+    incsp5.o                  runtime/incsp5.s:8
+    incsp4.o                  runtime/incsp4.s:8
+    incsp3.o                  runtime/incsp3.s:8
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+bnega (bneg.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+c_sp (zeropage.o):
+    _heap.o                   common/_heap.s:9
+    subeqsp.o                 runtime/subeqsp.s:8
+    staxsp.o                  runtime/staxsp.s:8
+    pushwsp.o                 runtime/pushwsp.s:8
+    pushax.o                  runtime/pushax.s:8
+    pusha.o                   runtime/pusha.s:8
+    memset.o                  common/memset.s:20
+    ldptr1sp.o                runtime/ldptr1sp.s:8
+    ldaxsp.o                  runtime/ldaxsp.s:8
+    incsp2.o                  runtime/incsp2.s:8
+    incsp1.o                  runtime/incsp1.s:8
+    icmp.o                    runtime/icmp.s:9
+    decsp5.o                  runtime/decsp5.s:8
+    decsp4.o                  runtime/decsp4.s:8
+    decsp3.o                  runtime/decsp3.s:8
+    decsp2.o                  runtime/decsp2.s:8
+    decsp1.o                  runtime/decsp1.s:8
+    addysp.o                  runtime/addysp.s:8
+    addeqsp.o                 runtime/addeqsp.s:8
+    add.o                     runtime/add.s:12
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:10
+decsp1 (decsp1.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+decsp2 (decsp2.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+decsp3 (decsp3.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+decsp4 (decsp4.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+decsp5 (decsp5.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+incax1 (incax1.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+incax2 (incax2.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+incax3 (incax3.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+incax4 (incaxy.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+incaxy (incaxy.o):
+    incax3.o                  runtime/incax3.s:8
+incsp1 (incsp1.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+incsp2 (incsp2.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+incsp3 (incsp3.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+incsp4 (incsp4.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+incsp5 (incsp5.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+incsp6 (incsp6.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+incsp7 (incsp7.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+incsp8 (incsp8.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+ldax0sp (ldaxsp.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+ldaxysp (ldaxsp.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+ldptr10sp (ldptr1sp.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+ldptr1ysp (ldptr1sp.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+popax (incsp2.o):
+    memset.o                  common/memset.s:19
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+ptr1 (zeropage.o):
+    memset.o                  common/memset.s:20
+    malloc.o                  common/malloc.s:108
+    ldptr1sp.o                runtime/ldptr1sp.s:8
+    free.o                    common/free.s:62
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:11
+    64u_radar2.asm.116664.0.o 64u_radar2.asm:57
+ptr2 (zeropage.o):
+    memset.o                  common/memset.s:20
+    malloc.o                  common/malloc.s:108
+    free.o                    common/free.s:62
+    64u_radar2.asm.116664.0.o 64u_radar2.asm:57
+ptr3 (zeropage.o):
+    memset.o                  common/memset.s:20
+    malloc.o                  common/malloc.s:108
+    free.o                    common/free.s:62
+    64u_radar2.asm.116664.0.o 64u_radar2.asm:57
+ptr4 (zeropage.o):
+    strlen.o                  common/strlen.s:12
+    free.o                    common/free.s:62
+    64u_radar2.asm.116664.0.o 64u_radar2.asm:57
+push0 (pushax.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+pusha (pusha.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    64u_radar2.asm.116664.0.o 64u_radar2.asm:64
+pusha0 (pushax.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+pushax (pushax.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    64u_radar2.asm.116664.0.o 64u_radar2.asm:63
+pushw0sp (pushwsp.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+pushwysp (pushwsp.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+sreg (zeropage.o):
+    icmp.o                    runtime/icmp.s:9
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:10
+stax0sp (staxsp.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+staxysp (staxsp.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+subeq0sp (subeqsp.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+tmp1 (zeropage.o):
+    incaxy.o                  runtime/incaxy.s:8
+    add.o                     runtime/add.s:12
+    64u_radar2.asm.116664.0.o 64u_radar2.asm:58
+tmp2 (zeropage.o):
+    64u_radar2.asm.116664.0.o 64u_radar2.asm:58
+tmp3 (zeropage.o):
+    64u_radar2.asm.116664.0.o 64u_radar2.asm:58
+tmp4 (zeropage.o):
+    64u_radar2.asm.116664.0.o 64u_radar2.asm:58
+tosaddax (add.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+tosicmp (icmp.o):
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+    ultimate_lib.c.116664.1.o ultimate_lib.c.116664.1.s:3282
+

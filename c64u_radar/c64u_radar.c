@@ -17,8 +17,15 @@
  *   $5C00 screen matrix (color cells, $D0 = light green on black)
  *   $6000 bitmap
  *   sprite pointers $68-$6F at $5FF8
- *   scope = left 200x200 px, center (100,100), 9nm ring r=95
+ *   scope = left 200x200 px, center (100,100), 15nm ring r=95
  *   table = char columns 26..39
+ *
+ * NOTE: VIC banks 0 and 2 hard-wire the character generator ROM into the
+ * VIC's view of memory at bank-offset $1000-$1FFF (this is independent of
+ * the CPU's $01 register and cannot be disabled). Bitmap/screen data placed
+ * in that window is invisible to the VIC -- it always shows chargen ROM
+ * there instead. Bank 1 ($4000-$7FFF) and bank 3 ($C000-$FFFF) have no such
+ * shadow, so graphics must stay in one of those two banks.
  *
  * Build:  make            (cl65 -t c64, vendored ultimateii-dos-lib, GPL-3)
  * Run:    select the PRG in the Ultimate file browser and run it
@@ -45,9 +52,9 @@
 /* ---- configuration ------------------------------------------------------ */
 #define FEED_HOST   "0.0.0.0"         /* public build requires menu setup   */
 #define FEED_PORT   6464
-#define POLL_JIF    600               /* 10 s between polls (jiffies)       */
+#define POLL_JIF    300               /* 5 s between polls (jiffies)        */
 #define REPLY_JIF   1200              /* 20 s: first new location may fetch */
-#define VERSION_STRING "V0.1"         /* main menu only; scope title has no
+#define VERSION_STRING "V0.3"         /* main menu only; scope title has no
                                           room for it (14-char column)      */
 
 /* ---- video map ----------------------------------------------------------- */
@@ -56,11 +63,24 @@
 #define SPR_DATA    0x5A00
 #define SPR_PTRVAL  0x68              /* ($5A00-$4000)/64                   */
 #define COL_GREEN_BLACK 0xD0
+#define COL_GREY_BLACK  0xF0
 #define COL_RED_BLACK   0x20
 #define SPR_GREEN   13
+#define SPR_GREY    15
+
+/* Two spare character-code slots in the software charset buffer (see
+ * `charset` below) are repurposed as a climb/descend indicator: the ROM
+ * uppercase/graphics set is loaded into all 256 8-byte slots, but codes
+ * $7E/$7F ('~'/DEL) never appear in any string this program draws, so
+ * overwriting them with custom glyphs cannot collide with real text. This
+ * costs zero extra memory -- charset is a fixed 2KB buffer regardless of
+ * how many of its 256 slots hold custom vs. ROM glyphs.                    */
+#define SC_DOWN_ARROW 0x7E
+#define SC_UP_ARROW   0x7F
 
 #define SCOPE_C     100               /* scope center px                    */
-#define RING_PX     95                /* 9 nm ring                          */
+#define RING_PX     95                /* max range ring                     */
+#define DEFAULT_SCOPE_RANGE_NM 15
 #define TBL_COL     26                /* table starts at char column 26    */
 #define TBL_W       14
 
@@ -90,20 +110,41 @@ unsigned char host_ram[65536];
 static unsigned char* const bmp = MEM(BITMAP);
 static unsigned char* const mtx = MEM(MATRIX);
 
-/* Upper RAM workspace. Keeping it out of the loaded program leaves the
- * fixed $5A00 sprite block untouched as menu/network features grow.        */
-static unsigned char* const charset = MEM(0x8000);
-static unsigned int* const rowbase = (unsigned int*)MEM(0x8800);
+/* Upper RAM workspace, placed in $C000-$CFFF: this 4KB window is always
+ * plain RAM on a stock C64 regardless of the CPU port ($01) banking state
+ * (only $A000-$BFFF, $D000-$DFFF and $E000-$FFFF are bankable), so no BASIC
+ * ROM switching is required. Keeping these buffers out of the loaded
+ * program leaves the fixed $5A00 sprite block untouched as menu/network
+ * features grow.                                                          */
+static unsigned char* const charset = MEM(0xC000);
 static const unsigned char bmask[8] =
     { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 };
 
-static unsigned char* const blob = MEM(0x8900);
-static unsigned char sock;
-static char* const feed_request = (char*)MEM(0x8A00);
-static char* const feed_host = (char*)MEM(0x8A30);
-static char* const scope_label1 = (char*)MEM(0x8A40);
-static char* const scope_label2 = (char*)MEM(0x8A50);
-static unsigned char link_down_displayed;
+static unsigned char* const blob = MEM(0xC900);
+/* Small scalar runtime state, kept in this fixed $C000-$CFFF window instead
+ * of the compiler's own BSS segment: BSS shares its address range with the
+ * transient ONCE segment (constructor tables, dead after startup) and the
+ * space available to it is capped by __STACKSIZE__ in
+ * cfg/c64u_radar_safe.cfg -- BSS grows up from __ONCE_RUN__, the runtime
+ * stack grows down from __HIMEM__, and the two must not meet. A real-
+ * hardware crash was traced to exactly that collision: adding the small
+ * climb/descend status-bit RODATA table nudged __ONCE_RUN__ up by a few
+ * bytes, and __STACKSIZE__ had already been trimmed to the bare minimum
+ * the linker's BSS-area formula would accept, leaving only a handful of
+ * bytes of real margin between the stack and these variables. Moving them
+ * here removes that pressure entirely -- they no longer compete with the
+ * stack margin no matter how much RODATA/CODE this program grows to.      */
+#define STATE_ADDR 0xCA90              /* free gap before MAILBOX_ADDR ($CAC0) */
+#define sock                (*(unsigned char*)MEM(STATE_ADDR))
+#define link_down_displayed (*(unsigned char*)MEM(STATE_ADDR + 1))
+#define server_source       (*(unsigned char*)MEM(STATE_ADDR + 2))
+#define cs_hotkey           (*(unsigned char*)MEM(STATE_ADDR + 3))
+#define location_mode       (*(unsigned char*)MEM(STATE_ADDR + 4))
+static char* const feed_request = (char*)MEM(0xCA00);
+static char* const feed_host = (char*)MEM(0xCA30);
+static char* const scope_label1 = (char*)MEM(0xCA40);
+static char* const scope_label2 = (char*)MEM(0xCA50);
+static unsigned char scope_range_nm = DEFAULT_SCOPE_RANGE_NM;
 
 /* Server-address mailbox shared with the radar Python server through the
  * Ultimate REST API (machine:readmem / machine:writemem). The server only
@@ -112,13 +153,71 @@ static unsigned char link_down_displayed;
  * reset/relaunch, which restores the last IP without the server.
  *   +0..3 magic "MR2M" (ASCII bytes, kept numeric: cc65 letter literals are
  *   PETSCII)  +4 version  +5 ip length  +6..21 ip text  +22 checksum        */
-#define MAILBOX_ADDR 0x8AC0
+#define MAILBOX_ADDR 0xCAC0
 static unsigned char* const mailbox = MEM(MAILBOX_ADDR);
-static unsigned char server_source;      /* SERVER_UNSET/AUTO/MANUAL        */
-static unsigned char cs_hotkey;          /* raw byte for Commodore+S, or 0  */
+/* server_source (SERVER_UNSET/AUTO/MANUAL) and cs_hotkey (raw byte for
+ * Commodore+S, or 0) are defined above with sock/link_down_displayed.     */
+
+/* The currently active custom location (if any), kept across repeated
+ * visits to setup_location() so that changing ONLY the range (menu option
+ * 3) rebuilds the exact same request with the new range instead of
+ * silently reverting to the server's default center. feed_request embeds
+ * the range as part of the wire text the server filters by, so a local-
+ * only scope_range_nm change is not enough -- the whole request has to be
+ * regenerated. Stored at full entered precision (unlike scope_label1/2,
+ * which are truncated to 14 characters for on-screen display only).
+ * LOC_DEFAULT means no custom location has been chosen yet; feed_request
+ * stays empty and the server falls back to its own configured default
+ * center -- there is no wire command for "default center, custom range",
+ * so a range-only change before ever picking a location only affects the
+ * local ring labels.                                                      */
+enum { LOC_DEFAULT, LOC_POSITION, LOC_ICAO };
+/* location_mode is defined above with sock/link_down_displayed.           */
+#define LOC_TEXT_ADDR 0xCA60          /* free gap before MAILBOX_ADDR ($CAC0) */
+static char* const saved_latitude  = (char*)MEM(LOC_TEXT_ADDR);       /* 17B */
+static char* const saved_longitude = (char*)MEM(LOC_TEXT_ADDR + 17);  /* 17B */
+static char* const saved_icao      = (char*)MEM(LOC_TEXT_ADDR + 34);  /*  5B */
 
 static unsigned char set_feed_host(const char* text);
 static unsigned char find_commodore_key(unsigned char unshifted_code);
+
+/* Right-justified, space-padded unsigned decimal, minimum field width
+ * `width` (0 = no padding) -- a tiny stand-in for sprintf's "%Nu". All
+ * call sites in this file only ever format values 0..255, so a 3-digit
+ * buffer is enough. Replacing every sprintf() call with this plus plain
+ * strcpy() lets the linker drop the entire cc65 sprintf/vfprintf runtime
+ * (format-string parser, conversion tables, etc.) which was by far the
+ * largest remaining consumer of the budget below the fixed $5A00 VIC
+ * bank 1 ceiling -- far more than any further string trimming could
+ * recover. Returns a pointer to just past the digits written. */
+static char* put_udec(char* dst, unsigned int value, unsigned char width)
+{
+    char digits[3];
+    unsigned char n = 0;
+    do {
+        digits[n++] = (char)('0' + value % 10);
+        value /= 10;
+    } while (value && n < 3);
+    while (width > n) { *dst++ = ' '; --width; }
+    while (n) *dst++ = digits[--n];
+    return dst;
+}
+
+static unsigned char set_scope_range_from_text(const char* text)
+{
+    unsigned int value = 0;
+    unsigned char digits = 0;
+    const char* p = text;
+    while (*p >= '0' && *p <= '9') {
+        if (++digits > 3) return 0;
+        value = value * 10 + (unsigned int)(*p++ - '0');
+    }
+    if (!digits || *p) return 0;
+    if (value < 3 || value > 99) return 0;
+    if ((value % 3) != 0) return 0;
+    scope_range_nm = (unsigned char)value;
+    return 1;
+}
 
 static unsigned char mailbox_checksum(void)
 {
@@ -171,6 +270,7 @@ static unsigned char mailbox_poll(void)
 
 static void init_config(void)
 {
+    server_source = location_mode = SERVER_UNSET;
     strcpy(feed_host, FEED_HOST);
     feed_request[0] = 0;
     scope_label1[0] = 0;
@@ -223,13 +323,21 @@ static unsigned char valid_coordinate(const char* text, unsigned int limit)
 static unsigned char set_position_request(const char* latitude,
                                           const char* longitude)
 {
+    char* d;
     if (!valid_coordinate(latitude, 90) || !valid_coordinate(longitude, 180))
         return 0;
     if (strlen(latitude) + strlen(longitude) + 13 > FEED_REQ_SZ)
         return 0;
     /* Lowercase source letters compile to the ASCII-compatible PETSCII
        bytes required by the network protocol. */
-    sprintf(feed_request, "mr2 pos %s %s 9\n", latitude, longitude);
+    d = feed_request;
+    strcpy(d, "mr2 pos "); d += 8;
+    strcpy(d, latitude); d += strlen(latitude);
+    *d++ = ' ';
+    strcpy(d, longitude); d += strlen(longitude);
+    *d++ = ' ';
+    d = put_udec(d, (unsigned int)scope_range_nm, 0);
+    *d++ = '\n'; *d = 0;
     strncpy(scope_label1, latitude, 14); scope_label1[14] = 0;
     strncpy(scope_label2, longitude, 14); scope_label2[14] = 0;
     return 1;
@@ -238,15 +346,43 @@ static unsigned char set_position_request(const char* latitude,
 static unsigned char set_icao_request(const char* code)
 {
     unsigned char i;
+    char* d;
     if (strlen(code) != 4) return 0;
     for (i = 0; i < 4; ++i)
         if (code[i] < 'A' || code[i] > 'Z') return 0;
-    sprintf(feed_request, "mr2 icao %c%c%c%c 9\n",
-            code[0] & 0x7F, code[1] & 0x7F,
-            code[2] & 0x7F, code[3] & 0x7F);
+    d = feed_request;
+    strcpy(d, "mr2 icao "); d += 9;
+    *d++ = (char)(code[0] & 0x7F);
+    *d++ = (char)(code[1] & 0x7F);
+    *d++ = (char)(code[2] & 0x7F);
+    *d++ = (char)(code[3] & 0x7F);
+    *d++ = ' ';
+    d = put_udec(d, (unsigned int)scope_range_nm, 0);
+    *d++ = '\n'; *d = 0;
     strcpy(scope_label1, code);
     scope_label2[0] = 0;
     return 1;
+}
+
+/* Regenerate feed_request (and scope_label1/2) for the currently active
+ * location using the *current* scope_range_nm, without requiring the user
+ * to re-enter the position/ICAO code. Called after a range-only change
+ * (menu option 3) so a previously chosen custom location survives. The
+ * saved text was already validated once by set_position_request()/
+ * set_icao_request(), and range never affects that validation, so this
+ * cannot fail. */
+static void rebuild_location_request(void)
+{
+    switch (location_mode) {
+        case LOC_POSITION:
+            set_position_request(saved_latitude, saved_longitude);
+            break;
+        case LOC_ICAO:
+            set_icao_request(saved_icao);
+            break;
+        default:
+            break;
+    }
 }
 
 static unsigned char set_feed_host(const char* text)
@@ -350,29 +486,27 @@ static void draw_server_status(void)
 {
     switch (server_source) {
         case SERVER_MANUAL:
-            menu_putsxy(4, 12, "USER ENTERED SERVER IP:");
+            menu_putsxy(4, 12, "USER SERVER IP:");
             menu_putsxy(4, 13, feed_host);
             break;
         case SERVER_AUTO:
-            menu_putsxy(4, 12, "Auto discovered server at:");
+            menu_putsxy(4, 12, "Auto-discovered server:");
             menu_putsxy(4, 13, feed_host);
             break;
         default:
-            menu_putsxy(4, 12, "SEARCHING FOR SERVER...");
+            menu_putsxy(4, 12, "SEARCHING FOR SERVER..");
             break;
     }
 }
 
 static void setup_location(void)
 {
-    char latitude[17], longitude[17], icao[5], address[16];
+    char latitude[17], longitude[17], icao[5], address[16], range_text[4];
+    char range_line[19];
     unsigned char choice, raw;
     textcolor(COLOR_LIGHTGREEN);
     bgcolor(COLOR_BLACK);
     bordercolor(COLOR_BLACK);
-    feed_request[0] = 0;
-    scope_label1[0] = 0;
-    scope_label2[0] = 0;
 
     for (;;) {
         clrscr();
@@ -380,9 +514,16 @@ static void setup_location(void)
         menu_putsxy(1, 4, "Choose an option to center your scope:");
         menu_putsxy(4, 6, "1. CENTER ON LAT/LONG");
         menu_putsxy(4, 8, "2. CENTER ON ICAO AIRPORT CODE");
+        {
+            char* d = range_line;
+            strcpy(d, "3. RANGE: "); d += 10;
+            d = put_udec(d, (unsigned int)scope_range_nm, 2);
+            strcpy(d, " NM");
+        }
+        menu_putsxy(4, 10, range_line);
         draw_server_status();
         menu_putsxy(4, 15, "C= + S CHANGES SERVER ADDRESS");
-        menu_putsxy(6, 20, "Traffic data source: adsb.fi");
+        menu_putsxy(6, 20, "Data: adsb.fi");
         menu_putsxy(13, 23, "levimaaia.com");
         menu_putsxy(9, 24, "youtube.com/@levimaaia");
         /* Wait for a key while watching the mailbox: the server pushes its
@@ -416,7 +557,7 @@ static void setup_location(void)
         choice = key_to_petscii(raw);
         if (choice == '1' || choice == 'P') {
             clrscr();
-            menu_putsxy(7, 1, "ENTER LATITUDE / LONGITUDE");
+            menu_putsxy(7, 1, "ENTER LAT / LONG");
             menu_putsxy(5, 3, "FORMAT: SIGNED DECIMAL DEGREES");
             menu_putsxy(5, 4, "LATITUDE:  -90 TO 90");
             menu_putsxy(5, 5, "LONGITUDE: -180 TO 180");
@@ -425,7 +566,12 @@ static void setup_location(void)
             read_input(latitude, 15);
             menu_putsxy(3, 12, "LONGITUDE: ");
             read_input(longitude, 16);
-            if (set_position_request(latitude, longitude)) return;
+            if (set_position_request(latitude, longitude)) {
+                strcpy(saved_latitude, latitude);
+                strcpy(saved_longitude, longitude);
+                location_mode = LOC_POSITION;
+                return;
+            }
             menu_putsxy(3, 16, "INVALID POSITION");
             menu_putsxy(3, 18, "PRESS A KEY TO RETRY");
             cgetc();
@@ -436,9 +582,35 @@ static void setup_location(void)
             menu_putsxy(7, 4, "ENTER ICAO CODE");
             menu_putsxy(12, 8, "CODE: ");
             read_input(icao, 4);
-            if (set_icao_request(icao)) return;
+            if (set_icao_request(icao)) {
+                strcpy(saved_icao, icao);
+                location_mode = LOC_ICAO;
+                return;
+            }
             menu_putsxy(8, 12, "INVALID ICAO CODE");
             menu_putsxy(8, 14, "PRESS A KEY");
+            cgetc();
+            continue;
+        }
+        if (choice == '3') {
+            clrscr();
+            menu_putsxy(8, 4, "SET RANGE (NM)");
+            menu_putsxy(3, 7, "MULTIPLE OF 3, 3..99");
+            {
+                char* d = range_line;
+                strcpy(d, "CURRENT: "); d += 9;
+                d = put_udec(d, (unsigned int)scope_range_nm, 2);
+                *d = 0;
+            }
+            menu_putsxy(10, 9, range_line);
+            menu_putsxy(9, 12, "RANGE: ");
+            read_input(range_text, 3);
+            if (set_scope_range_from_text(range_text)) {
+                rebuild_location_request();
+                return;
+            }
+            menu_putsxy(6, 16, "INVALID RANGE VALUE");
+            menu_putsxy(6, 18, "PRESS A KEY");
             cgetc();
             continue;
         }
@@ -463,6 +635,19 @@ static const unsigned char digit_rows[8][5] = {
 static const unsigned char dir_x[8] = { 11, 18, 21, 18, 11, 4, 1, 4 };
 static const unsigned char dir_y[8] = {  0,  3, 10, 17, 20,17,10, 3 };
 
+/* Climb/descend indicator glyphs patched into the software charset at
+ * SC_DOWN_ARROW/SC_UP_ARROW (see copy_charset). $7E/$7F are consecutive
+ * codes, so their 8-byte patterns are one contiguous 16-byte block --
+ * a single memcpy covers both.                                            */
+static const unsigned char arrow_glyphs[16] =
+    { 0x00, 0x00, 0x7F, 0x3E, 0x1C, 0x08, 0x00, 0x00,   /* down, $7E */
+      0x00, 0x00, 0x08, 0x1C, 0x3E, 0x7F, 0x00, 0x00 }; /* up,   $7F */
+
+static unsigned int bmp_row_offset(unsigned char row)
+{
+    return ((unsigned int)row << 8) + ((unsigned int)row << 6);
+}
+
 /* ==========================================================================
  * low-level drawing
  * ========================================================================== */
@@ -470,7 +655,7 @@ static const unsigned char dir_y[8] = {  0,  3, 10, 17, 20,17,10, 3 };
 static void plot(int x, int y)
 {
     if ((unsigned)x > 199 || (unsigned)y > 199) return;
-    bmp[rowbase[y >> 3] + (y & 7) + (x & 0xF8)] |= bmask[x & 7];
+    bmp[bmp_row_offset((unsigned char)(y >> 3)) + (y & 7) + (x & 0xF8)] |= bmask[x & 7];
 }
 
 static void hline(int x0, int x1, int y)
@@ -564,7 +749,7 @@ static void draw_sc(unsigned char col, unsigned char row,
                     const unsigned char* sc, unsigned char len)
 {
     unsigned char i, k;
-    unsigned char* dst = bmp + rowbase[row] + (col << 3);
+    unsigned char* dst = bmp + bmp_row_offset(row) + (col << 3);
     const unsigned char* g;
     for (i = 0; i < len; ++i) {
         g = charset + ((unsigned int)sc[i] << 3);
@@ -579,7 +764,7 @@ static void draw_sc_reverse(unsigned char col, unsigned char row,
                             unsigned char sc)
 {
     unsigned char k;
-    unsigned char* dst = bmp + rowbase[row] + (col << 3);
+    unsigned char* dst = bmp + bmp_row_offset(row) + (col << 3);
     const unsigned char* g = charset + ((unsigned int)sc << 3);
     for (k = 0; k < 8; ++k) dst[k] = (unsigned char)~g[k];
 }
@@ -642,20 +827,18 @@ static void copy_charset(void)
     memcpy(charset, (void*)0xD000, 2048);         /* uppercase/gfx set     */
     POKE(0x0001, p);
     __asm__("cli");
+    memcpy(charset + (SC_DOWN_ARROW * 8), arrow_glyphs, 16);
 }
 #endif
 
 static void init_video(void)
 {
-    unsigned char i;
-    unsigned int r;
-    for (i = 0; i < 25; ++i) {
-        r = i; rowbase[i] = r * 320;
-    }
-    memset(bmp, 0, 8000);
-    memset(mtx, COL_GREEN_BLACK, 1000);
+    POKE(0xD011, 0x0B);                           /* display off during mode switch */
+    POKE(0xDD02, PEEK(0xDD02) | 0x03);            /* CIA2 PA0/PA1 outputs  */
     POKE(0xDD00, (PEEK(0xDD00) & 0xFC) | 0x02);   /* VIC bank 1 ($4000)    */
     POKE(0xD018, 0x78);                           /* matrix $5C00, bmp $6000 */
+    memset(bmp, 0, 8000);
+    memset(mtx, COL_GREEN_BLACK, 1000);
     POKE(0xD011, 0x3B);                           /* hires bitmap on       */
     POKE(0xD016, 0xC8);
     POKE(0xD020, 0); POKE(0xD021, 0);
@@ -677,7 +860,7 @@ static void init_sprites(void)
 
 static void draw_static_scope(void)
 {
-    static const unsigned char lbl3 = 0x33, lbl6 = 0x36, lbl9 = 0x39;
+    char ring_label[3];
 
     /* bezel + rings (3/6/9 nm) + center cross */
     hline(0, 199, 0);  hline(0, 199, 199);
@@ -688,13 +871,16 @@ static void draw_static_scope(void)
     hline(98, 102, 100); vline(98, 102, 100);
 
     /* ring labels just right of 12 o'clock, like the panel */
-    draw_sc(13, 8, &lbl3, 1);
-    draw_sc(13, 4, &lbl6, 1);
-    draw_sc(13, 0, &lbl9, 1);
+    *put_udec(ring_label, (unsigned int)(scope_range_nm / 3), 2) = 0;
+    draw_ascii(12, 8, ring_label, 2);
+    *put_udec(ring_label, (unsigned int)((scope_range_nm * 2) / 3), 2) = 0;
+    draw_ascii(12, 4, ring_label, 2);
+    *put_udec(ring_label, (unsigned int)scope_range_nm, 2) = 0;
+    draw_ascii(12, 0, ring_label, 2);
 
     /* right column chrome */
     draw_centered(TBL_COL, 0, "C64U RADAR", TBL_W);
-    memset(bmp + rowbase[1] + (TBL_COL << 3), 0, TBL_W * 8);
+    memset(bmp + bmp_row_offset(1) + (TBL_COL << 3), 0, TBL_W * 8);
     {
         unsigned char bar[TBL_W];
         memset(bar, 0x40, TBL_W);                 /* horizontal line char  */
@@ -710,7 +896,7 @@ static void draw_static_scope(void)
 
 static void show_status(unsigned char st)
 {
-    static const char* txt[] =
+    static const char* const txt[] =
         { "LINK OK", "LINK STALE", "LINK DOWN", "BAD DATA", "CONNECTING",
           "BAD LOCATION" };
     memset(mtx + 21 * 40 + TBL_COL,
@@ -738,6 +924,7 @@ static void render_targets(void)
     unsigned char total = blob[5];
     unsigned char age   = blob[6];
     unsigned char i, x, y;
+    unsigned char row_color;
     const unsigned char* r;
     unsigned char lineA[TBL_W], lineB[TBL_W];
     char tmp[16];
@@ -746,18 +933,35 @@ static void render_targets(void)
 
     draw_centered(TBL_COL, 2, scope_label1, TBL_W);
     draw_centered(TBL_COL, 3, scope_label2, TBL_W);
-    if (blob[3] & 0x01) sprintf(tmp, "AGE %3u RNG %3u", age, total);
-    else sprintf(tmp, "IN RANGE %3u", total);
+    if (blob[3] & 0x01) {
+        char* d = tmp;
+        strcpy(d, "AGE "); d += 4;
+        d = put_udec(d, age, 3);
+        strcpy(d, " RNG "); d += 5;
+        d = put_udec(d, total, 3);
+        *d = 0;
+    } else {
+        char* d = tmp;
+        strcpy(d, "IN "); d += 3;
+        d = put_udec(d, (unsigned int)scope_range_nm, 2);
+        strcpy(d, "NM "); d += 3;
+        d = put_udec(d, total, 3);
+        *d = 0;
+    }
     draw_ascii(TBL_COL, 22, tmp, TBL_W);
 
     /* Keep the previous frame visible while positions/patterns are updated. */
     for (i = 0; i < count; ++i) {
         r = blob + 8 + (unsigned int)i * REC_SZ;
         x = r[0]; y = r[1];
-        build_sprite(i, r[4], r[3] & 0x04);
+        {
+            /* status bit 0x01 = alt unknown/None = aircraft is on ground   */
+            unsigned char grounded = r[3] & 0x01;
+            build_sprite(i, r[4], r[3] & 0x04);
+            POKE(0xD027 + i, grounded ? SPR_GREY : SPR_GREEN);
+        }
         POKE(0xD000 + (i << 1), 24 + x - 11);     /* center local 11,10    */
         POKE(0xD001 + (i << 1), 50 + y - 10);
-        POKE(0xD027 + i, SPR_GREEN);
     }
     POKE(0xD015, count ? (unsigned char)((1 << count) - 1) : 0);
 
@@ -765,8 +969,10 @@ static void render_targets(void)
     for (i = 0; i < MAX_AC; ++i) {
         memset(lineA, 0x20, TBL_W);
         memset(lineB, 0x20, TBL_W);
+        row_color = COL_GREEN_BLACK;
         if (i < count) {
             r = blob + 8 + (unsigned int)i * REC_SZ;
+            if (r[3] & 0x01) row_color = COL_GREY_BLACK;
             lineA[0] = (unsigned char)('1' + i);  /* sprite/list number    */
             memcpy(lineA + 1,  r + 6, 8);         /* callsign              */
             memcpy(lineA + 10, r + 14, 4);        /* type, col 9 is space  */
@@ -774,11 +980,26 @@ static void render_targets(void)
             memcpy(lineB + 7,  r + 23, 4);        /* gs                    */
             lineB[11] = 0x0B;                     /* K                     */
             lineB[12] = 0x14;                     /* T                     */
+            /* status bits 0x08/0x10 = climbing/descending (see server's
+             * pack_record, which sets at most one of the two); neither set
+             * means level, on ground, or the rate is unknown -- leave the
+             * trailing column blank. Masked into one local byte and
+             * compared by equality (rather than two independent bitwise
+             * branches) so only the exact expected bit patterns match.    */
+            {
+                unsigned char vstatus = (unsigned char)(r[3] & 0x18);
+                if (vstatus == 0x08) lineB[6] = SC_UP_ARROW;
+                else if (vstatus == 0x10) lineB[6] = SC_DOWN_ARROW;
+            }
         } else if (i == 0) {
+            memset(mtx + 4 * 40 + TBL_COL, COL_GREEN_BLACK, TBL_W);
+            memset(mtx + 5 * 40 + TBL_COL, COL_GREEN_BLACK, TBL_W);
             draw_ascii(TBL_COL, 4, "NO TRAFFIC", TBL_W);
             draw_sc(TBL_COL, 5, lineB, TBL_W);
             continue;
         }
+        memset(mtx + (unsigned int)(4 + (i << 1)) * 40 + TBL_COL, row_color, TBL_W);
+        memset(mtx + (unsigned int)(5 + (i << 1)) * 40 + TBL_COL, row_color, TBL_W);
         draw_sc(TBL_COL, 4 + (i << 1), lineA, TBL_W);
         if (i < count)
             draw_sc_reverse(TBL_COL, 4 + (i << 1), lineA[0]);
@@ -824,6 +1045,7 @@ static int read_blob(void)
 static unsigned char fetch(void)
 {
     int r;
+    uii_abort();
     sock = uii_tcpconnect(feed_host, FEED_PORT);
     if (!uii_success()) return ST_DOWN;
     if (feed_request[0]) {
@@ -858,6 +1080,7 @@ static void init_text_video(void)
     POKE(0xD015, 0);
     POKE(0xD011, 0x1B);
     POKE(0xD016, 0xC8);
+    POKE(0xDD02, PEEK(0xDD02) | 0x03);
     POKE(0xDD00, (PEEK(0xDD00) & 0xFC) | 0x03);
     POKE(0xD018, 0x17);                           /* lowercase/uppercase ROM */
     POKE(0xD020, 0); POKE(0xD021, 0);
