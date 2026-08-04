@@ -1,5 +1,13 @@
 # C64U Radar
 
+**C64U Radar turns a C64U, Ultimate 64 (or possibly a C64 with an Ultimate II cartridge) into a live air traffic scope.**
+
+Select any worldwide airport's four-letter ICAO code and the aircraft actually flying near that airport *right now* appear as moving targets on your screen.
+
+It works for airports worldwide. Point it at your local field and watch the approach traffic line up, or at KLAX and watch it get busy.
+
+The C64 can't handle encrypted network traffic so a small server on your computer and fetches live traffic from [adsb.fi](https://adsb.fi) and streams it on your LAN.
+
 **v0.1 — first public beta.** A live ADS-B air traffic scope for the
 Commodore 64 Ultimate (C64U/Ultimate 64).
 
