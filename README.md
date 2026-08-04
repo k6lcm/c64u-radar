@@ -7,7 +7,7 @@ Commodore 64 Ultimate (C64U/Ultimate 64).
 
 **v0.3 - track table enhancements.** climb/descent glyphs, ground tracks in grey, auto QNH
 
-![C64U Radar scope screen](assets/v0.3asm radar.png)!
+![C64U Radar scope screen](assets/v0.3asm%20radar.png)!
 
 The C64 can't do HTTPS, JSON, or geodesic math, so a small companion program
 does that on a Mac, Windows, Linux, or Raspberry Pi computer and streams a
