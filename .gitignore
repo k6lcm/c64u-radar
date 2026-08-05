@@ -1,0 +1,22 @@
+# Downloaded at runtime on first server start; never commit a local copy.
+airports_cache.json
+
+# Build outputs. The shipped binaries under executables/ are tracked
+# deliberately and are not matched by these paths.
+/c64u_radar/*.prg
+/c64u_radar/*.map
+/c64u_radar/*.o
+/c64u_radar/ultimateii/*.o
+
+# Host test harness binary and its dumps
+/c64u_radar/host_test/harness
+/c64u_radar/host_test/bitmap.bin
+/c64u_radar/host_test/sprblock.bin
+/c64u_radar/host_test/sprite_sheet.bin
+/c64u_radar/host_test/sprites.txt
+/c64u_radar/host_test/*.png
+
+# OS/editor cruft
+.DS_Store
+__pycache__/
+*.pyc
