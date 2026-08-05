@@ -17,4 +17,5 @@ unsigned char uii_tcpconnect(char* host, unsigned short port);
 int  uii_socketread(unsigned char socketid, unsigned short length);
 void uii_socketwrite(unsigned char socketid, char* data);
 void uii_socketclose(unsigned char socketid);
+void uii_abort(void);
 #endif

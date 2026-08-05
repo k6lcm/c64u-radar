@@ -8,8 +8,9 @@ serves the existing 232-byte maximum radar wire format over plain LAN TCP.
 The current C64U program connects to TCP port 6464, sends nothing, receives one
 blob, and disconnects. A forward-compatible request is also accepted:
 
-    MR2 POS 51.470748 -0.459909 9
-    MR2 ICAO EGLL 9
+    MR2 POS 51.470748 -0.459909 15
+    MR2 ICAO EGLL 15
+    MR2 RNG 15
 
 ICAO codes are resolved from a cached copy of the public-domain OurAirports
 dataset. Optional ``airports`` entries in the JSON configuration are retained
@@ -41,18 +42,60 @@ from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 
 APP_NAME = "C64 Ultimate Radar Server"
-APP_VERSION = "1.3.0"
+APP_VERSION = "1.4.0"
 
 DEFAULT_LATITUDE = 0.0
 DEFAULT_LONGITUDE = 0.0
-DEFAULT_RANGE_NM = 9.0
+DEFAULT_RANGE_NM = 15.0
 DEFAULT_BIND = "0.0.0.0"
 DEFAULT_PORT = 6464
-DEFAULT_CACHE_SECONDS = 8.0
+DEFAULT_CACHE_SECONDS = 4.0
 DEFAULT_STALE_AFTER_SECONDS = 30.0
 DEFAULT_TIMEOUT_SECONDS = 15.0
 DEFAULT_PEEK_SECONDS = 0.35
 DEFAULT_AIRPORT_CACHE_DAYS = 30.0
+
+# ADS-B alt_baro is intentionally NOT corrected for local weather: by
+# international convention every aircraft's transponder computes it from its
+# own static pressure against the fixed ISA sea-level reference of 1013.25
+# hPa (29.92 inHg), never the real local QNH. That is the whole point of
+# barometric/pressure altitude -- it lets aircraft separate safely by a
+# common reference regardless of the weather underneath them. Near the
+# ground, if the real local QNH is higher than 1013.25 (as it often is),
+# alt_baro reads *lower* than true height above sea level -- including
+# negative values -- which is expected and correct, not a bug. To show a
+# realistic AMSL altitude for low-level local traffic, this server can
+# apply an explicit, user-supplied local QNH (qnh_hpa) as a correction,
+# using the exact ISA barometric formula (not a flat ft/hPa rule of thumb).
+# The correction is only applied below qnh_correction_ceiling_ft: aircraft
+# above that (should be set to the local transition altitude) are legally
+# flying on the *standard* 1013.25 setting themselves, reporting genuine
+# flight levels, and correcting those would make en-route traffic wrong.
+STANDARD_QNH_HPA = 1013.25
+DEFAULT_QNH_HPA = STANDARD_QNH_HPA           # 1013.25 = correction disabled
+DEFAULT_QNH_CORRECTION_CEILING_FT = 10000.0  # set to the local transition altitude
+# Auto-QNH: when enabled the server watches for the lowest raw (ISA/1013.25)
+# pressure altitude reported by in-range airborne targets.  If that running
+# minimum falls below zero, it implies the real local pressure exceeds
+# 1013.25 hPa and the transponder altitudes read low.  The correction uses
+# the same ft-per-hPa approximation as the user's formula:
+#   QNH_adjusted = QNH_base + (airport_elevation_ft - lowest_raw_alt_ft) / 30
+# The adjusted value is clamped to 850-1085 hPa and applied to all subsequent
+# altitude corrections via qnh_corrected_altitude().  The lowest-altitude
+# accumulator is a running minimum (resets only on server restart) so a
+# single low reading propagates forward until conditions genuinely improve.
+# Requires qnh_auto_adjust_icao: the ICAO code of a configured airport whose
+# elevation_ft is known (sourced from the OurAirports database or a manual
+# override with a three-element [lat, lon, elevation_ft] entry).
+DEFAULT_QNH_AUTO_ADJUST = False
+# Constants for the ICAO/FAA standard-atmosphere pressure-altitude formula:
+#   Hp = 145366.45 * (1 - (P / P0) ** 0.190284)   [feet, P/P0 in hPa]
+# valid throughout the troposphere; this is the same formula altimeters and
+# transponders use, so inverting it to recover indicated pressure and then
+# re-applying it against the real QNH gives an exact ISA-model correction
+# rather than an approximate linear ft/hPa fudge factor.
+_ISA_ALTITUDE_COEFFICIENT_FT = 145366.45
+_ISA_PRESSURE_EXPONENT = 0.190284
 
 ADSB_FI_BASE = "https://opendata.adsb.fi/api/v3"
 USER_AGENT = "C64-Ultimate-Radar/1.2"
@@ -68,18 +111,28 @@ SCOPE_CENTER_PX = 100
 SCOPE_RADIUS_PX = 95.0
 BLIP_COLOR = 0x03
 
+# Vertical-rate (climb/descend) classification. adsb.fi's v3 API is
+# compatible with the ADSBexchange v2 / readsb aircraft.json schema, which
+# reports baro_rate (barometric vertical rate, ft/min, from the transponder)
+# and geom_rate (GPS-derived vertical rate) as a fallback when baro_rate is
+# absent -- the same fallback pattern already used for track/true_heading
+# above. Small non-zero rates are common even for level cruise flight (ATC
+# altitude-hold jitter, sensor noise), so a deadband is used: only rates at
+# or beyond this threshold count as a genuine climb or descent.
+LEVEL_VERTICAL_RATE_FPM = 150.0
+
 MAGIC = b"LD"
 WIRE_VERSION = 1
 RECORD_SIZE = 28
 FLAG_LOCATION_ERROR = 0x04
 
 # C64 Ultimate REST API mailbox used to hand this server's address to a
-# running radar PRG. The PRG plants the magic at $8AC0; the server refuses to
+# running radar PRG. The PRG plants the magic at $CAC0; the server refuses to
 # write unless the magic is present, so it can never poke a machine that is
 # not running the radar. Layout (23 bytes):
 #   +0..3  magic "MR2M"   +4 version   +5 ip length
 #   +6..21 ip text, NUL padded to 16   +22 checksum
-MAILBOX_ADDRESS = 0x8AC0
+MAILBOX_ADDRESS = 0xCAC0
 MAILBOX_MAGIC = b"MR2M"
 MAILBOX_VERSION = 1
 MAILBOX_IP_CAPACITY = 16
@@ -129,7 +182,14 @@ class ServerConfig:
     provider_base: str = ADSB_FI_BASE
     airport_database_url: str = AIRPORTS_CSV_URL
     airport_cache_days: float = DEFAULT_AIRPORT_CACHE_DAYS
-    airports: Dict[str, Tuple[float, float]] = field(default_factory=dict)
+    # airports maps ICAO code -> (latitude, longitude, elevation_ft_or_None)
+    # elevation_ft is populated from the OurAirports CSV or a three-element
+    # manual override [lat, lon, elevation_ft] in the JSON configuration.
+    airports: Dict[str, Tuple[float, float, Optional[float]]] = field(default_factory=dict)
+    qnh_hpa: float = DEFAULT_QNH_HPA
+    qnh_correction_ceiling_ft: float = DEFAULT_QNH_CORRECTION_CEILING_FT
+    qnh_auto_adjust: bool = DEFAULT_QNH_AUTO_ADJUST
+    qnh_auto_adjust_icao: Optional[str] = None
     ultimate_discovery: bool = True
     ultimate_hosts: List[str] = field(default_factory=list)
     ultimate_interval_seconds: float = DEFAULT_ULTIMATE_INTERVAL_SECONDS
@@ -153,6 +213,15 @@ class ServerConfig:
             raise ConfigurationError("airport_database_url must be an HTTPS URL")
         if self.airport_cache_days < 1:
             raise ConfigurationError("airport_cache_days must be at least 1")
+        # 850/1085 hPa comfortably bracket the most extreme sea-level
+        # pressures ever recorded on Earth (typhoon lows near 870 hPa,
+        # Siberian highs near 1084 hPa), so this just catches typos/unit
+        # mistakes (e.g. entering inHg instead of hPa) rather than genuine
+        # weather.
+        if not 850.0 <= self.qnh_hpa <= 1085.0:
+            raise ConfigurationError("qnh_hpa must be between 850 and 1085")
+        if not 0.0 <= self.qnh_correction_ceiling_ft <= 60000.0:
+            raise ConfigurationError("qnh_correction_ceiling_ft must be between 0 and 60000")
         if self.ultimate_interval_seconds < 3.0:
             raise ConfigurationError("ultimate_interval_seconds must be at least 3")
         clean_hosts: List[str] = []
@@ -161,14 +230,27 @@ class ServerConfig:
             if host and host not in clean_hosts:
                 clean_hosts.append(host)
         self.ultimate_hosts = clean_hosts
-        clean_airports: Dict[str, Tuple[float, float]] = {}
+        clean_airports: Dict[str, Tuple[float, float, Optional[float]]] = {}
         for code, position in self.airports.items():
             code = str(code).upper().strip()
             if len(code) != 4 or not code.isalpha():
                 raise ConfigurationError(f"invalid ICAO airport code: {code!r}")
             scope = Scope(float(position[0]), float(position[1]), self.default_scope.range_nm).validated()
-            clean_airports[code] = (scope.latitude, scope.longitude)
+            elevation_ft = float(position[2]) if len(position) > 2 and position[2] is not None else None
+            clean_airports[code] = (scope.latitude, scope.longitude, elevation_ft)
         self.airports = clean_airports
+        if self.qnh_auto_adjust:
+            if self.qnh_auto_adjust_icao:
+                code = str(self.qnh_auto_adjust_icao).upper().strip()
+                if len(code) != 4 or not code.isalpha():
+                    raise ConfigurationError(f"qnh_auto_adjust_icao: invalid ICAO code {code!r}")
+                # Table-membership and elevation checks are deferred to run()
+                # because load_airport_database() hasn't populated config.airports
+                # from the CSV yet at this point.
+                self.qnh_auto_adjust_icao = code
+            # qnh_auto_adjust_icao is optional: when absent the formula uses
+            # sea level (0 ft) and STANDARD_QNH_HPA as the base, giving
+            # QNH = 1013.25 - lowest_raw_alt / 30.
         return self
 
 
@@ -252,12 +334,36 @@ def altitude_text(altitude: Optional[float]) -> str:
     return str(int(round(altitude)))
 
 
-def extract_targets(payload: Mapping, scope: Scope) -> List[dict]:
+def qnh_corrected_altitude(
+    pressure_altitude_ft: float,
+    qnh_hpa: float,
+    ceiling_ft: float = DEFAULT_QNH_CORRECTION_CEILING_FT,
+) -> float:
+    """Convert ADS-B pressure altitude (always ISA/1013.25-referenced) to an
+    approximate true altitude AMSL using the supplied local QNH, via the
+    exact ISA barometric formula (see the qnh_hpa module comment).
+    Left unchanged at/above `ceiling_ft` (should match the local transition
+    altitude), since traffic up there is genuinely flying the standard
+    1013.25 setting and reporting real flight levels."""
+    if qnh_hpa == STANDARD_QNH_HPA or pressure_altitude_ft >= ceiling_ft:
+        return pressure_altitude_ft
+    indicated_pressure_hpa = STANDARD_QNH_HPA * (
+        1.0 - pressure_altitude_ft / _ISA_ALTITUDE_COEFFICIENT_FT
+    ) ** (1.0 / _ISA_PRESSURE_EXPONENT)
+    return _ISA_ALTITUDE_COEFFICIENT_FT * (
+        1.0 - (indicated_pressure_hpa / qnh_hpa) ** _ISA_PRESSURE_EXPONENT
+    )
+
+
+def _min_raw_alt_baro(payload: Mapping, scope: Scope) -> Optional[float]:
+    """Lowest raw ISA (1013.25-referenced) pressure altitude of in-range
+    airborne targets.  Uses the same filtering logic as extract_targets so
+    ground vehicles and out-of-range aircraft are excluded."""
     aircraft = payload.get("ac") or payload.get("aircraft") or []
     if not isinstance(aircraft, list):
-        return []
+        return None
     center = (scope.latitude, scope.longitude)
-    targets: List[dict] = []
+    minimum: Optional[float] = None
     for item in aircraft:
         if not isinstance(item, Mapping):
             continue
@@ -266,6 +372,60 @@ def extract_targets(payload: Mapping, scope: Scope) -> List[dict]:
         speed = _number(item.get("gs"))
         if speed is not None and speed < MIN_GROUND_SPEED_KT:
             continue
+        lat = _number(item.get("lat"))
+        lon = _number(item.get("lon"))
+        if lat is None or lon is None:
+            continue
+        if distance_nm(center, (lat, lon)) > scope.range_nm:
+            continue
+        alt = _number(item.get("alt_baro"))
+        if alt is not None and (minimum is None or alt < minimum):
+            minimum = alt
+    return minimum
+
+
+def _compute_auto_qnh(
+    base_qnh: float,
+    lowest_raw_alt_ft: float,
+    airport_elevation_ft: float,
+) -> float:
+    """Derive an adjusted QNH from the lowest observed ISA pressure altitude.
+
+    When the lowest in-range airborne target reports a pressure altitude
+    below zero (1013.25-referenced), it implies the real local QNH is higher
+    than standard.  Applying the standard ft-per-hPa approximation:
+
+        QNH_adjusted = QNH_base + (airport_elevation_ft - lowest_raw_alt_ft) / 30
+
+    Example: airport elevation 188 ft, lowest report -100 ft:
+        QNH = 1013.25 + (188 - (-100)) / 30 = 1013.25 + 9.6 = 1022.85 hPa
+
+    If the lowest observed altitude is >= 0 no adjustment is applied.
+    Result is clamped to 850-1085 hPa (widest plausible range)."""
+    if lowest_raw_alt_ft >= 0.0:
+        return base_qnh
+    adjusted = base_qnh + (airport_elevation_ft - lowest_raw_alt_ft) / 30.0
+    return max(850.0, min(1085.0, adjusted))
+
+
+def extract_targets(
+    payload: Mapping,
+    scope: Scope,
+    qnh_hpa: float = DEFAULT_QNH_HPA,
+    qnh_correction_ceiling_ft: float = DEFAULT_QNH_CORRECTION_CEILING_FT,
+) -> List[dict]:
+    aircraft = payload.get("ac") or payload.get("aircraft") or []
+    if not isinstance(aircraft, list):
+        return []
+    center = (scope.latitude, scope.longitude)
+    targets: List[dict] = []
+    for item in aircraft:
+        if not isinstance(item, Mapping):
+            continue
+        on_ground = str(item.get("alt_baro", "")).lower() == "ground"
+        speed = _number(item.get("gs"))
+        if not on_ground and speed is not None and speed < MIN_GROUND_SPEED_KT:
+            continue
         latitude = _number(item.get("lat"))
         longitude = _number(item.get("lon"))
         if latitude is None or longitude is None:
@@ -273,10 +433,15 @@ def extract_targets(payload: Mapping, scope: Scope) -> List[dict]:
         distance = distance_nm(center, (latitude, longitude))
         if distance > scope.range_nm:
             continue
-        altitude = _number(item.get("alt_baro"))
+        altitude = None if on_ground else _number(item.get("alt_baro"))
+        if altitude is not None:
+            altitude = qnh_corrected_altitude(altitude, qnh_hpa, qnh_correction_ceiling_ft)
         track = _number(item.get("track"))
         if track is None:
             track = _number(item.get("true_heading"))
+        vrate = None if on_ground else _number(item.get("baro_rate"))
+        if vrate is None and not on_ground:
+            vrate = _number(item.get("geom_rate"))
         callsign = item.get("flight") or item.get("r") or item.get("hex") or "----"
         aircraft_type = item.get("t") or "----"
         targets.append({
@@ -285,15 +450,28 @@ def extract_targets(payload: Mapping, scope: Scope) -> List[dict]:
             "alt": altitude,
             "gs": speed,
             "trk": track,
+            "vrate": vrate,
+            "ground": on_ground,
             "distance": distance,
             "bearing": bearing_degrees(center, (latitude, longitude)),
         })
-    targets.sort(key=lambda target: target["distance"])
+    # Display priority for the 8 slots the C64 can show (see build_blob):
+    # airborne traffic always outranks grounded traffic (sorting False before
+    # True), and within each of those two groups, nearer beats farther. This
+    # is a strict two-level ordering, not a single blended score -- a distant
+    # airborne aircraft will always be kept over a nearby grounded one.
+    targets.sort(key=lambda target: (target["ground"], target["distance"]))
     return targets
 
 
 def pack_record(target: Mapping, scope: Scope) -> bytes:
     x, y = project_to_scope(target["bearing"], target["distance"], scope.range_nm)
+    # status bit layout (28-byte wire record, see RECORD_SIZE):
+    #   0x01 altitude unknown   0x02 groundspeed unknown   0x04 track unknown
+    #   0x08 climbing (vrate >= +LEVEL_VERTICAL_RATE_FPM)
+    #   0x10 descending (vrate <= -LEVEL_VERTICAL_RATE_FPM)
+    #   (neither 0x08 nor 0x10 set) level flight, on ground, or rate unknown
+    #   0x20/0x40/0x80 currently unused/reserved
     status = 0
     if target["alt"] is None:
         status |= 0x01
@@ -301,6 +479,12 @@ def pack_record(target: Mapping, scope: Scope) -> bytes:
         status |= 0x02
     if target["trk"] is None:
         status |= 0x04
+    vrate = target.get("vrate")
+    if vrate is not None:
+        if vrate >= LEVEL_VERTICAL_RATE_FPM:
+            status |= 0x08
+        elif vrate <= -LEVEL_VERTICAL_RATE_FPM:
+            status |= 0x10
     track_byte = 0 if target["trk"] is None else round(target["trk"] * 256 / 360) % 256
     speed_byte = 0 if target["gs"] is None else max(0, min(255, round(target["gs"])))
     speed_text = "--" if target["gs"] is None else str(round(target["gs"]))
@@ -318,6 +502,11 @@ def pack_record(target: Mapping, scope: Scope) -> bytes:
 
 
 def build_blob(snapshot: Snapshot) -> bytes:
+    # snapshot.targets is already ordered airborne-then-ground, nearest-first
+    # within each group (see extract_targets), so this slice both caps the
+    # count at what the C64 can display AND applies that display priority --
+    # grounded or far targets are the first to be dropped when there are
+    # more than MAX_AIRCRAFT candidates in range.
     shown = snapshot.targets[:MAX_AIRCRAFT]
     flags = (0x01 if snapshot.stale else 0) | (0x02 if snapshot.total > MAX_AIRCRAFT else 0)
     header = MAGIC + bytes([
@@ -354,6 +543,11 @@ class TrafficService:
         self._last_upstream_monotonic = 0.0
         self._stop_event = threading.Event()
         self._refresh_thread: Optional[threading.Thread] = None
+        # Auto-QNH tracking: the effective QNH starts at the configured value
+        # and is auto-adjusted downward when the lowest observed raw altitude
+        # is negative (guarded by _upstream_lock so no separate lock needed).
+        self._effective_qnh: float = config.qnh_hpa
+        self._lowest_raw_alt: Optional[float] = None
 
     def refresh(self, scope: Scope, force: bool = False) -> Snapshot:
         scope = scope.validated()
@@ -385,7 +579,40 @@ class TrafficService:
                 )
                 with urllib.request.urlopen(request, timeout=self.config.timeout_seconds) as response:
                     payload = json.loads(response.read().decode("utf-8"))
-                targets = extract_targets(payload, scope)
+                targets = extract_targets(
+                    payload, scope, self._effective_qnh, self.config.qnh_correction_ceiling_ft
+                )
+                # Auto-QNH: update lowest raw altitude and recompute effective
+                # QNH for the next refresh cycle (one-cycle lag is fine; the
+                # value converges after the first negative reading).
+                # When qnh_auto_adjust_icao is set and found, use that airport's
+                # elevation; otherwise fall back to sea level (0 ft) and
+                # STANDARD_QNH_HPA so QNH = 1013.25 - lowest_raw_alt / 30.
+                if self.config.qnh_auto_adjust:
+                    if self.config.qnh_auto_adjust_icao:
+                        airport = self.config.airports.get(self.config.qnh_auto_adjust_icao)
+                        base_qnh = self.config.qnh_hpa
+                        airport_elev = airport[2] if (airport and airport[2] is not None) else 0.0
+                    else:
+                        base_qnh = STANDARD_QNH_HPA
+                        airport_elev = 0.0
+                    min_alt = _min_raw_alt_baro(payload, scope)
+                    if min_alt is not None:
+                        if self._lowest_raw_alt is None or min_alt < self._lowest_raw_alt:
+                            self._lowest_raw_alt = min_alt
+                        new_qnh = _compute_auto_qnh(
+                            base_qnh,
+                            self._lowest_raw_alt,
+                            airport_elev,
+                        )
+                        if new_qnh != self._effective_qnh:
+                            self._effective_qnh = new_qnh
+                            print(
+                                f"new QNH calculated as {self._effective_qnh:.2f} hPa"
+                                f" (lowest raw alt {self._lowest_raw_alt:.0f} ft,"
+                                f" airport elev {airport_elev:.0f} ft)",
+                                flush=True,
+                            )
                 snapshot = Snapshot(
                     scope=scope,
                     targets=targets,
@@ -430,11 +657,13 @@ class TrafficService:
 
     def get(self, scope: Scope) -> Snapshot:
         scope = scope.validated()
+        now_mono = time.monotonic()
         with self._lock:
             snapshot = self._snapshots.get(scope)
             if snapshot:
-                snapshot.last_used_monotonic = time.monotonic()
-                return snapshot
+                snapshot.last_used_monotonic = now_mono
+                if now_mono - snapshot.attempted_monotonic < self.config.cache_seconds:
+                    return snapshot
         return self.refresh(scope, force=True)
 
     def start_background_refresh(self) -> None:
@@ -472,7 +701,7 @@ class TrafficService:
     def status(self) -> List[dict]:
         with self._lock:
             snapshots = list(self._snapshots.values())
-        return [
+        result = [
             {
                 "center": snapshot.scope.label(),
                 "targets": snapshot.total,
@@ -483,6 +712,15 @@ class TrafficService:
             }
             for snapshot in snapshots
         ]
+        if self.config.qnh_auto_adjust:
+            result.append({
+                "qnh_auto_adjust": True,
+                "qnh_base_hpa": self.config.qnh_hpa,
+                "qnh_effective_hpa": round(self._effective_qnh, 2),
+                "lowest_raw_alt_ft": round(self._lowest_raw_alt, 0) if self._lowest_raw_alt is not None else None,
+                "reference_airport": self.config.qnh_auto_adjust_icao,
+            })
+        return result
 
 
 def parse_location_command(
@@ -509,8 +747,11 @@ def parse_location_command(
             if code not in airports:
                 return default_scope, f"ICAO {code} is not in the configured airport table"
             range_nm = float(parts[3]) if len(parts) == 4 else default_scope.range_nm
-            latitude, longitude = airports[code]
+            latitude, longitude = airports[code][0], airports[code][1]
             return Scope(latitude, longitude, range_nm).validated(), None
+        if mode == "RNG" and len(parts) == 3:
+            range_nm = float(parts[2])
+            return Scope(default_scope.latitude, default_scope.longitude, range_nm).validated(), None
     except (ValueError, ConfigurationError) as error:
         return default_scope, str(error)
     return default_scope, "invalid MR2 request; using default center"
@@ -526,7 +767,7 @@ def scope_from_query(
         code = query["icao"][0].upper()
         if code not in airports:
             raise ConfigurationError(f"ICAO {code} is not in the configured airport table")
-        latitude, longitude = airports[code]
+        latitude, longitude = airports[code][0], airports[code][1]
         return Scope(latitude, longitude, range_nm).validated()
     if "lat" in query or "lon" in query:
         if "lat" not in query or "lon" not in query:
@@ -639,7 +880,7 @@ class UltimatePusher:
     """Find C64 Ultimate machines and hand them this server's address.
 
     Uses the Ultimate's REST API (GET /v1/version to identify, machine:readmem
-    and machine:writemem for the $8AC0 mailbox). Candidates come from the
+    and machine:writemem for the $CAC0 mailbox). Candidates come from the
     configured host list plus a threaded port-80 sweep of each local /24.
     """
 
@@ -917,16 +1158,24 @@ def _load_json_config(path: Path) -> dict:
     return value
 
 
-def _airport_table(value) -> Dict[str, Tuple[float, float]]:
+def _airport_table(value) -> Dict[str, Tuple[float, float, Optional[float]]]:
+    """Parse the airports mapping from JSON config or cache.
+    Accepts two-element [lat, lon] entries (elevation unknown) and
+    three-element [lat, lon, elevation_ft] entries."""
     if value is None:
         return {}
     if not isinstance(value, Mapping):
         raise ConfigurationError("airports must be a JSON object")
-    result = {}
+    result: Dict[str, Tuple[float, float, Optional[float]]] = {}
     for code, position in value.items():
-        if not isinstance(position, Sequence) or isinstance(position, (str, bytes)) or len(position) != 2:
-            raise ConfigurationError(f"airport {code} must be [latitude, longitude]")
-        result[str(code)] = (float(position[0]), float(position[1]))
+        if (
+            not isinstance(position, Sequence)
+            or isinstance(position, (str, bytes))
+            or len(position) not in (2, 3)
+        ):
+            raise ConfigurationError(f"airport {code} must be [latitude, longitude] or [latitude, longitude, elevation_ft]")
+        elev: Optional[float] = float(position[2]) if len(position) > 2 and position[2] is not None else None
+        result[str(code)] = (float(position[0]), float(position[1]), elev)
     return result
 
 
@@ -946,7 +1195,8 @@ def parse_airports_csv(data: bytes) -> Dict[str, Tuple[float, float]]:
             ).validated()
         except (KeyError, TypeError, ValueError, ConfigurationError):
             continue
-        result[code] = (scope.latitude, scope.longitude)
+        elev = _number(row.get("elevation_ft"))
+        result[code] = (scope.latitude, scope.longitude, elev)
     return result
 
 
@@ -1018,6 +1268,8 @@ def parse_arguments(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--lat", type=float, help="override default latitude")
     parser.add_argument("--lon", type=float, help="override default longitude")
     parser.add_argument("--range", dest="range_nm", type=float, help="override scope range in nautical miles")
+    parser.add_argument("--qnh", dest="qnh_hpa", type=float, help="local QNH in hPa, to correct low-level altitudes (default: 1013.25 = no correction)")
+    parser.add_argument("--qnh-ceiling-ft", dest="qnh_ceiling_ft", type=float, help="altitude (ft) at/above which QNH correction is skipped; set to your local transition altitude (default: 10000)")
     parser.add_argument("--bind", help="address to bind, normally 0.0.0.0")
     parser.add_argument("--port", type=int, help="TCP port, normally 6464")
     parser.add_argument("--ultimate-host", action="append", help="C64 Ultimate address to push the server IP to (repeatable; skips LAN scan)")
@@ -1044,6 +1296,20 @@ def configuration_from_arguments(arguments: argparse.Namespace) -> ServerConfig:
         airport_database_url=str(raw.get("airport_database_url", AIRPORTS_CSV_URL)),
         airport_cache_days=float(raw.get("airport_cache_days", DEFAULT_AIRPORT_CACHE_DAYS)),
         airports=_airport_table(raw.get("airports")),
+        qnh_hpa=(
+            arguments.qnh_hpa if arguments.qnh_hpa is not None
+            else float(raw.get("qnh_hpa", DEFAULT_QNH_HPA))
+        ),
+        qnh_correction_ceiling_ft=(
+            arguments.qnh_ceiling_ft if arguments.qnh_ceiling_ft is not None
+            else float(raw.get("qnh_correction_ceiling_ft", DEFAULT_QNH_CORRECTION_CEILING_FT))
+        ),
+        qnh_auto_adjust=bool(raw.get("qnh_auto_adjust", DEFAULT_QNH_AUTO_ADJUST)),
+        qnh_auto_adjust_icao=(
+            str(raw["qnh_auto_adjust_icao"]).upper().strip()
+            if raw.get("qnh_auto_adjust_icao")
+            else None
+        ),
         ultimate_discovery=(
             not arguments.no_ultimate and bool(raw.get("ultimate_discovery", True))
         ),
@@ -1065,6 +1331,23 @@ def run(config: ServerConfig) -> int:
     print("-" * 46)
     print("Loading ICAO airport data...", flush=True)
     print(load_airport_database(config), flush=True)
+    # Post-load validation: if an ICAO code was given, confirm it has elevation.
+    if config.qnh_auto_adjust and config.qnh_auto_adjust_icao:
+        code = config.qnh_auto_adjust_icao
+        if code not in config.airports:
+            print(
+                f"WARNING: qnh_auto_adjust_icao {code!r} is not in the airport table; "
+                "falling back to sea-level reference (0 ft).",
+                file=sys.stderr,
+            )
+            config.qnh_auto_adjust_icao = None
+        elif config.airports[code][2] is None:
+            print(
+                f"WARNING: qnh_auto_adjust_icao {code!r} has no elevation data; "
+                "falling back to sea-level reference (0 ft).",
+                file=sys.stderr,
+            )
+            config.qnh_auto_adjust_icao = None
     traffic = TrafficService(config)
     try:
         server = RadarServer((config.bind, config.port), config, traffic)
@@ -1080,6 +1363,21 @@ def run(config: ServerConfig) -> int:
     else:
         print("LAN address:    not detected; check this computer's network settings")
     print(f"Provider:      {provider_url(config.provider_base, config.default_scope)}")
+    if config.qnh_auto_adjust:
+        if config.qnh_auto_adjust_icao:
+            airport = config.airports.get(config.qnh_auto_adjust_icao)
+            elev = airport[2] if airport else 0.0
+            print(
+                f"QNH auto-adjust: ENABLED  reference airport {config.qnh_auto_adjust_icao}"
+                f"  elevation {elev:.0f} ft  base QNH {config.qnh_hpa:.2f} hPa"
+            )
+        else:
+            print(
+                f"QNH auto-adjust: ENABLED  reference sea level (0 ft)"
+                f"  base QNH {STANDARD_QNH_HPA:.2f} hPa"
+            )
+    else:
+        print(f"QNH:           {config.qnh_hpa:.2f} hPa (static)")
     print("Warming the traffic cache...", flush=True)
     first = traffic.refresh(config.default_scope, force=True)
     if first.stale:

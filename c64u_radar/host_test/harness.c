@@ -74,6 +74,7 @@ int uii_socketread(unsigned char socketid, unsigned short length)
 }
 
 void uii_socketclose(unsigned char socketid) { (void)socketid; }
+void uii_abort(void) { }        /* UCI timeout guard: no-op on the host */
 
 /* ---- mailbox helper: emulate the server's REST writemem push ---- */
 static void push_mailbox(const char* ip)
@@ -208,7 +209,7 @@ int main(void)
     printf("fetch status=%u (0=OK)  count=%u total=%u age=%u flags=%02x\n",
            st, blob[4], blob[5], blob[6], blob[3]);
     if (st != ST_OK) return 1;
-    if (strcmp(sent_request, "mr2 pos 39.117210 -94.635600 9\n")) {
+    if (strcmp(sent_request, "mr2 pos 39.117210 -94.635600 15\n")) {
         fprintf(stderr, "public position request mismatch: %s\n", sent_request); return 1;
     }
     feed[3] |= 0x04;
@@ -229,7 +230,7 @@ int main(void)
     if (strcmp(scope_label1, "40.6413") || strcmp(scope_label2, "-73.7781")) {
         fprintf(stderr, "position labels mismatch\n"); return 1;
     }
-    if (fetch() != ST_OK || strcmp(sent_request, "mr2 pos 40.6413 -73.7781 9\n")) {
+    if (fetch() != ST_OK || strcmp(sent_request, "mr2 pos 40.6413 -73.7781 15\n")) {
         fprintf(stderr, "position request mismatch: %s\n", sent_request); return 1;
     }
     if (!set_icao_request("KJFK")) {
@@ -238,7 +239,7 @@ int main(void)
     if (strcmp(scope_label1, "KJFK") || scope_label2[0]) {
         fprintf(stderr, "ICAO label mismatch\n"); return 1;
     }
-    if (fetch() != ST_OK || strcmp(sent_request, "mr2 icao KJFK 9\n")) {
+    if (fetch() != ST_OK || strcmp(sent_request, "mr2 icao KJFK 15\n")) {
         fprintf(stderr, "ICAO request mismatch: %s\n", sent_request); return 1;
     }
     if (set_position_request("90.1", "0") ||
@@ -250,7 +251,7 @@ int main(void)
     }
     /* Every displayed list number must be the reverse of its digit glyph. */
     for (i = 0; i < blob[4]; ++i) {
-        cell = host_ram + BITMAP + rowbase[4 + (i << 1)] + (TBL_COL << 3);
+        cell = host_ram + BITMAP + bmp_row_offset((unsigned char)(4 + (i << 1))) + (TBL_COL << 3);
         glyph = charset + ((unsigned int)('1' + i) << 3);
         for (k = 0; k < 8; ++k) {
             if (cell[k] != (unsigned char)~glyph[k]) {
@@ -339,7 +340,7 @@ int main(void)
     show_link_down();
     if (host_ram[0xD015] || !link_down_displayed ||
         host_ram[MATRIX + 12 * 40 + 6] != COL_RED_BLACK ||
-        host_ram[BITMAP + rowbase[12] + (6 << 3)] != 0xFF) {
+        host_ram[BITMAP + bmp_row_offset(12) + (6 << 3)] != 0xFF) {
         fprintf(stderr, "link-down banner/clearing failed\n"); return 1;
     }
 

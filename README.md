@@ -8,12 +8,11 @@ It works for airports worldwide. Point it at your local field and watch the appr
 
 The C64 can't handle encrypted network traffic so a small server on your computer and fetches live traffic from [adsb.fi](https://adsb.fi) and streams it on your LAN.
 
-**v0.1 — first public beta.** A live ADS-B air traffic scope for the
-Commodore 64 Ultimate (C64U/Ultimate 64).
+## Version history
 
-**v0.2 - range set via menu.** added new menu item to set range (3..99) multiples of 3
-
-**v0.3 - track table enhancements.** climb/descent glyphs, ground tracks in grey, auto QNH
+- **v0.3** — track table enhancements: climb/descent glyphs, ground tracks in grey, auto QNH.
+- **v0.2** — range set via menu: new menu item to set range (3..99), in multiples of 3.
+- **v0.1** — first public beta.
 
 ![C64U Radar scope screen](assets/v0.3asm%20radar.png)
 
@@ -58,8 +57,7 @@ third-party package, no account.
    - **Linux**: run `executables/server_bundle/start_server_mac_linux.sh`.
    - Or directly: `python3 executables/server_bundle/ultimate_radar_server.py`
      (Python 3.9+).
-2. On the C64U: enable `Command Interface`, then run `executables/c64u_radar.prg`
-   for the .c based version and /C64u_radar2.prg for the .6502 version. 
+2. On the C64U: enable `Command Interface`, then run `executables/c64u_radar.prg`.
    Look under **Main Menu > MEMORY & ROMS** on the Commodore-branded C64
    Ultimate, or **Configure > C64 and Cartridge Settings** on other
    Ultimate 64 / 1541 Ultimate-II+ firmware. Menu location can vary by
@@ -78,6 +76,14 @@ make clean all
 
 Fails the build if the program/data exceeds the fixed `$5A00` sprite memory
 block — this is checked automatically by `check_map.py`.
+
+`make` also builds `c64u_radar2.prg` from `c64u_radar2.asm`, a hand-written
+6502 assembly port of the same program contributed by
+[@buck5125](https://github.com/buck5125). It is smaller and has less
+per-frame overhead than the cc65 build, and is kept here for people who want
+to build and experiment with it. The C version remains the reference
+implementation and is the only one shipped as a release download, so if you
+just want to run the radar, use `c64u_radar.prg` above.
 
 **Native logic harness** (no C64 emulator; compiles the real radar source
 against a fake 64K RAM and a mocked Ultimate network API, using your system's
@@ -103,9 +109,10 @@ python3 -m unittest test_ultimate_radar_server.py
 ## Repository layout
 
 ```text
-c64u_radar/          C64 program source (cc65), Makefile, native test harness
+c64u_radar/          C64 program source (cc65 C + 6502 asm port), Makefile,
+                     native test harness
 server/              Python server source and tests
-executables/          Prebuilt PRG and a ready-to-run server bundle
+executables/         Prebuilt PRG and a ready-to-run server bundle
 assets/              Screenshots
 ```
 
@@ -125,6 +132,8 @@ debug endpoints (`/traffic.txt`, `/status.json`, etc.).
 - C64 Ultimate command interface: the `ultimateii` library in
   `c64u_radar/ultimateii/`, by Scott Hutter and Francesco Sblendorio
   ([1541ultimate2](https://github.com/markusC64/1541ultimate2)), GPL-3.
+- 6502 assembly port (`c64u_radar/c64u_radar2.asm`), plus the v0.2 range menu
+  and v0.3 track-table work: [@buck5125](https://github.com/buck5125).
 
 ## License
 

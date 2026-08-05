@@ -50,16 +50,36 @@ class GeometryTests(unittest.TestCase):
         self.assertAlmostEqual(radar.bearing_degrees((HOME.latitude, HOME.longitude), nearby), 34.6, places=1)
         self.assertEqual(radar.project_to_scope(34.6, 6.69, 9), (140, 42))
 
-    def test_filters_ground_slow_missing_and_out_of_range(self):
+    def test_filters_slow_missing_and_out_of_range(self):
+        """Airborne traffic below the speed floor, without a position, or out
+        of range is dropped. Ground traffic is kept (see the ordering test)."""
         payload = fixture_payload(2)
         payload["ac"].extend([
-            {"flight": "GROUND", "lat": HOME.latitude, "lon": HOME.longitude, "alt_baro": "ground", "gs": 80},
             {"flight": "SLOW", "lat": HOME.latitude, "lon": HOME.longitude, "alt_baro": 500, "gs": 20},
             {"flight": "NOPOS", "alt_baro": 500, "gs": 80},
             {"flight": "FAR", "lat": HOME.latitude + 1, "lon": HOME.longitude, "alt_baro": 500, "gs": 80},
         ])
         targets = radar.extract_targets(payload, HOME)
         self.assertEqual([target["callsign"] for target in targets], ["TEST1", "TEST2"])
+
+    def test_ground_traffic_is_kept_but_ranked_below_airborne(self):
+        """Grounded aircraft are shown but always sort after airborne ones, so
+        they are the first to be dropped when more than 8 targets are in
+        range. The airborne speed floor deliberately does not apply to them --
+        taxiing aircraft are slow by nature."""
+        payload = fixture_payload(2)
+        payload["ac"].extend([
+            # Closer than either airborne target, and slow, but on the ground.
+            {"flight": "TAXI", "lat": HOME.latitude, "lon": HOME.longitude,
+             "alt_baro": "ground", "gs": 15},
+        ])
+        targets = radar.extract_targets(payload, HOME)
+        self.assertEqual([target["callsign"] for target in targets],
+                         ["TEST1", "TEST2", "TAXI"])
+        self.assertTrue(targets[-1]["ground"])
+        self.assertFalse(any(target["ground"] for target in targets[:-1]))
+        # Grounded targets report no altitude/vertical rate.
+        self.assertIsNone(targets[-1]["alt"])
 
 
 class WireTests(unittest.TestCase):
@@ -108,13 +128,17 @@ class RequestTests(unittest.TestCase):
 
 class AirportDatabaseTests(unittest.TestCase):
     def test_parse_ourairports_icao_coordinates(self):
+        """Entries are (latitude, longitude, elevation_ft); elevation is used
+        for QNH-adjusted altitude and is None when the CSV omits it."""
         data = (
-            b'id,ident,latitude_deg,longitude_deg,icao_code\n'
-            b'1,KPVD,41.725038,-71.425668,KPVD\n'
-            b'2,LOCAL,10,20,\n'
+            b'id,ident,latitude_deg,longitude_deg,elevation_ft,icao_code\n'
+            b'1,KPVD,41.725038,-71.425668,55,KPVD\n'
+            b'2,NOELEV,10.5,20.5,,EGLL\n'
+            b'3,LOCAL,10,20,,\n'
         )
         airports = radar.parse_airports_csv(data)
-        self.assertEqual(airports["KPVD"], (41.725038, -71.425668))
+        self.assertEqual(airports["KPVD"], (41.725038, -71.425668, 55.0))
+        self.assertEqual(airports["EGLL"], (10.5, 20.5, None))
         self.assertNotIn("LOCAL", airports)
 
     def test_cached_database_merges_configured_overrides(self):
