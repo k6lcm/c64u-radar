@@ -1,6 +1,6 @@
 # C64U Radar
 
-**C64U Radar turns a C64U, Ultimate 64 (or possibly a C64 with an Ultimate II cartridge) into a live air traffic scope.**
+**C64U Radar turns a Commodore 64 Ultimate, Ultimate 64 or an original C64 with an Ultimate II cartridges into a live air traffic scope.**
 
 Select any worldwide airport's four-letter ICAO code and the aircraft actually flying near that airport *right now* appear as moving targets on your screen.
 
