@@ -42,7 +42,7 @@ from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 
 APP_NAME = "C64 Ultimate Radar Server"
-APP_VERSION = "1.4.0"
+APP_VERSION = "0.4"  # tracks the client release; bump both together
 
 DEFAULT_LATITUDE = 0.0
 DEFAULT_LONGITUDE = 0.0

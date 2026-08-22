@@ -152,10 +152,11 @@ LOC_TEXT_ADDR = $CA60
 
 ; STATE_ADDR byte offsets (matches C #defines)
 ;   +0  sock
-;   +1  link_down_displayed
+;   +1  block_render
 ;   +2  server_source
 ;   +3  cs_hotkey
 ;   +4  location_mode
+;   +5  bad_location
 
 ; Keyboard decode tables (KERNAL ROM)
 KEYTAB_UNSHIFT   = $EB81
@@ -244,7 +245,7 @@ bmask: .byte $80,$40,$20,$10,$08,$04,$02,$01
 
 ; Menu strings (PETSCII, null-terminated)
 ; Drawn by menu_putsxy via direct screen/color RAM writes.
-str_title:    .byte "C64U RADAR V0.3asm",0
+str_title:    .byte "C64U RADAR V0.4asm",0
 str_opt_hdr:  .byte "Choose an option to center your scope:",0
 str_opt1:     .byte "1. CENTER ON LAT/LONG",0
 str_opt2:     .byte "2. CENTER ON ICAO AIRPORT CODE",0
@@ -261,6 +262,7 @@ str_enter_ip: .byte "ENTER SERVER IP ADDRESS",0
 str_ip_lbl:   .byte "IP: ",0
 str_invalid_ip:.byte "INVALID IP ADDRESS",0
 str_press_key:.byte "PRESS A KEY",0
+str_loc_nf:   .byte "LOCATION NOT FOUND",0
 str_lat_hdr:  .byte "ENTER LAT / LONG",0
 str_fmt:      .byte "FORMAT: SIGNED DECIMAL DEGREES",0
 str_lat_rng:  .byte "LATITUDE:  -90 TO 90",0
@@ -1780,6 +1782,8 @@ cc_save_p: .res 1
 .proc init_video
     lda  #$0B
     sta  VIC_CTRL1           ; display off during switch
+    lda  #0
+    sta  VIC_SPR_EN          ; sprites off before display returns
     lda  CIA2_DDRA
     ora  #$03
     sta  CIA2_DDRA           ; PA0/PA1 = outputs
@@ -2650,6 +2654,8 @@ fck_target: .res 1
     sta  STATE_ADDR+2
     lda  #LOC_DEFAULT
     sta  STATE_ADDR+4
+    lda  #0
+    sta  STATE_ADDR+5       ; bad_location = 0
     ; strcpy(feed_host, FEED_HOST_DEFAULT)
     lda  #<FEED_HOST_ADDR
     sta  ptr1
@@ -3569,6 +3575,32 @@ ri_start_y: .res 1
     lda  #0
     sta  $D021              ; bgcolor black
     sta  $D020              ; bordercolor black
+
+    lda  STATE_ADDR+5       ; bad_location
+    beq  @outer
+    lda  #6
+    sta  tmp1
+    lda  #16
+    sta  tmp2
+    lda  #<str_loc_nf
+    sta  ptr2
+    lda  #>str_loc_nf
+    sta  ptr2+1
+    jsr  menu_putsxy
+    lda  #6
+    sta  tmp1
+    lda  #18
+    sta  tmp2
+    lda  #<str_press_key
+    sta  ptr2
+    lda  #>str_press_key
+    sta  ptr2+1
+    jsr  menu_putsxy
+@wk_loc:
+    jsr  GETIN
+    beq  @wk_loc
+    lda  #0
+    sta  STATE_ADDR+5
 
 @outer:
     ; Set current-color BEFORE CLR so KERNAL fills color RAM from $0286.
@@ -5178,26 +5210,59 @@ start:
 @main_loop:
     jsr  init_text_video
     jsr  setup_location
+    ; preflight fetch before video init: catches bad location without drawing the radar
+    lda  #1
+    sta  STATE_ADDR+1       ; block_render=1, suppress render_targets during preflight
+    jsr  fetch
+    sta  main_status
+    cmp  #ST_LOCATION
+    bne  @pf_check_exit
+    lda  #1
+    sta  STATE_ADDR+5       ; bad_location = 1
+    jmp  @exit_inner
+@pf_check_exit:
+    cmp  #ST_EXIT
+    bne  @pf_setup_video
+    jmp  @exit_inner
+@pf_setup_video:
     jsr  init_video
     jsr  init_sprites
     jsr  draw_static_scope
     lda  #0
-    sta  STATE_ADDR+1       ; link_down_displayed = 0
-    lda  #ST_WAIT
+    sta  STATE_ADDR+1       ; block_render = 0
+    lda  main_status
+    cmp  #ST_DOWN
+    bne  @pf_not_down
+    jsr  show_link_down
+    jmp  @inner_loop
+@pf_not_down:
+    cmp  #ST_BAD
+    beq  @pf_show_status
+    jsr  render_targets
+@pf_show_status:
+    lda  main_status
     jsr  show_status_w
 
 @inner_loop:
+    jsr  wait_jiffies
+    bne  @exit_inner
     jsr  fetch
     sta  main_status
     cmp  #ST_EXIT
     beq  @exit_inner
+    cmp  #ST_LOCATION
+    bne  @not_location
+    lda  #1
+    sta  STATE_ADDR+5       ; bad_location = 1
+    jmp  @exit_inner
+@not_location:
     cmp  #ST_DOWN
     bne  @not_down
-    lda  STATE_ADDR+1       ; link_down_displayed
+    lda  STATE_ADDR+1       ; block_render
     bne  @skip_down
     jsr  show_link_down
 @skip_down:
-    jmp  @wait
+    jmp  @inner_loop
 @not_down:
     ; not down: if link was down, reinitialise display
     lda  STATE_ADDR+1
@@ -5211,9 +5276,6 @@ start:
 @no_reinit:
     lda  main_status
     jsr  show_status_w
-@wait:
-    jsr  wait_jiffies
-    bne  @exit_inner
     jmp  @inner_loop
 @exit_inner:
     jmp  @main_loop

@@ -1,18 +1,24 @@
 # C64U Radar
 
-## ASM Port Changelog (2026-07-31)
+## Changelog
 
-- Completed full behavioral parity port from `c64u_radar.c` to `64u_radar2.asm`.
-- Optimized render path for lower per-frame overhead (direct bitmap/sprite/table updates).
-- Reduced code size by removing C runtime overhead and unused high-level abstractions.
-- Added robust range handling (`MR2 RNG`) and deterministic numeric formatting for menu/status text.
-- Hardened arithmetic helpers for reliable decimal formatting (`CLD`-safe helpers where needed).
-- Aligned menu text rendering with PETSCII case semantics so displayed case matches source strings.
+The 6502 assembly build (`c64u_radar.asm`) is the shipping version and was
+contributed by [@buck5125](https://github.com/buck5125).
 
-## C Changelog (2026-07-24)
-
-- v0.2 - Added menu item to adjust display range. Must be multipe of 3..99
-- v0.3 - Added climb/descent glyphs, revealed ground tracks in grey, 'auto' QNH/QFE, frame rate
+- **v0.4asm (2026-08-22)** — main build switched to `c64u_radar.asm`
+  (buck5125). Invalid ICAO / out-of-range location is caught in the setup
+  menu (via a preflight fetch before video init) instead of drawing the
+  scope and then overlaying a "BAD LOCATION" message. Sprites are cleared
+  alongside the display-off during `init_video` to prevent stale-pointer
+  artifacts.
+- **v0.3asm (2026-07-31)** — full behavioral parity port from `c64u_radar.c`
+  to `c64u_radar.asm` by buck5125. Optimized render path (direct bitmap/
+  sprite/table updates), smaller code size (no C runtime), robust `MR2 RNG`
+  handling, deterministic numeric formatting, `CLD`-safe helpers, PETSCII
+  case alignment.
+- **v0.3 (2026-07-24, cc65 C)** — climb/descent glyphs, ground tracks in
+  grey, auto QNH/QFE, frame rate. Retained as the reference implementation.
+- **v0.2 (cc65 C)** — menu item to adjust display range (multiples of 3, 3..99).
 
 ## Overview
 
@@ -23,7 +29,7 @@ and the user always picks a real center on the C64.
 The visible menu is:
 
 ```text
-C64U RADAR V0.3 / V0.3asm
+C64U RADAR V0.4asm
 Choose an option to center your scope:
 1. CENTER ON LAT/LONG
 2. CENTER ON ICAO AIRPORT CODE
@@ -31,8 +37,9 @@ Choose an option to center your scope:
 ```
 
 The version string is on the main menu title only — the bitmap scope
-screen's own title has no room for it (14-character column). Bump
-`VERSION_STRING` in `c64u_radar.c` for future releases.
+screen's own title has no room for it (14-character column). Bump `str_title`
+in `c64u_radar.asm` for future releases (and `VERSION_STRING` in
+`c64u_radar.c` if you also rebuild the legacy C reference).
 
 Users choose a latitude/longitude or four-letter ICAO airport center. There is
 no numbered menu option for the server IP; the address normally fills itself
@@ -63,22 +70,33 @@ Commodore-modified key. `POKE 657,128` disables the KERNAL's automatic
 SHIFT+Commodore charset toggle, since Commodore is now an application hotkey
 modifier and the program owns a fixed lowercase/uppercase charset choice.
 
-## Build cc65 and 6502 versions
+## Build
 
-see makefile..
-
-Build with cc65 on `PATH`:
+Requires [cc65](https://cc65.github.io/) on `PATH` (cc65 ships `ca65`/`ld65`,
+which the asm build uses via `cl65`).
 
 ```sh
 make clean all
 ```
 
-Output: `c64u_radar.prg`. The build fails if program/data reaches the fixed
-sprite block at `$5A00`.
+Output: `c64u_radar.prg`, built from `c64u_radar.asm`. The build fails if
+program/data reaches the fixed sprite block at `$5A00`.
 
-Run the native harness from `host_test/` with:
+The legacy cc65 C reference build is not part of `make all`. Build it
+explicitly if you want to compare:
 
 ```sh
+make c64u_radar_c.prg
+```
+
+Output: `c64u_radar_c.prg` (same design, larger, higher per-frame overhead).
+
+Run the native harness (compiles the C reference against a fake 64K RAM and
+a mocked Ultimate network API, using the system's C compiler — not a
+substitute for hardware testing, but useful for logic regressions):
+
+```sh
+cd host_test
 cc -DHOST_TEST -I. -I.. -o harness harness.c
 ./harness
 ```

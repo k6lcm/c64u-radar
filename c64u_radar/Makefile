@@ -1,30 +1,33 @@
 # C64U Radar public build
 # Requires cc65/cl65 on PATH.
 
+# Primary build: 6502 assembly (contributed by @buck5125). Smaller and lower
+# per-frame overhead than the legacy cc65 C build; this is the .prg shipped
+# in executables/ and referenced from the top-level README.
 PRG  = c64u_radar.prg
 MAP  = c64u_radar.map
-SRC  = c64u_radar.c ultimateii/ultimate_lib.c
+SRC  = c64u_radar.asm ultimateii/ultimate_lib.c
 
-PRG2 = c64u_radar2.prg
-MAP2 = c64u_radar2.map
-SRC2 = c64u_radar2.asm ultimateii/ultimate_lib.c
+# Legacy cc65 C build, retained as a reference implementation of the same
+# design (the host_test/ harness compiles against it). Not part of `make all`;
+# build explicitly with `make c64u_radar_c.prg`.
+PRG_C = c64u_radar_c.prg
+MAP_C = c64u_radar_c.map
+SRC_C = c64u_radar.c ultimateii/ultimate_lib.c
 
 # Both targets build with cc65's stock c64 config and stay under the fixed
-# $5A00 VIC bank 1 ceiling (C: $5803, asm: $4E2A), so no custom linker config
-# is required. A custom cfg to relocate ultimate_lib.c's 2KB uii_status/
-# uii_data queues out of low RAM is worthwhile future work for headroom, but
-# needs a correctly sized UII_BSS area, a matching #pragma bss-name in
-# ultimate_lib.c, and a placement that does not run into I/O space at $D000.
+# $5A00 VIC bank 1 ceiling (asm: $4E2A, C: $5803), so no custom linker config
+# is required.
 
-all: $(PRG) $(PRG2)
+all: $(PRG)
 
 $(PRG): $(SRC)
 	cl65 -t c64 -O -Iultimateii --mapfile $(MAP) -o $@ $(SRC)
 	@python3 check_map.py $(MAP)
 
-$(PRG2): $(SRC2)
-	cl65 -t c64 -O -Iultimateii --mapfile $(MAP2) -o $@ $(SRC2)
-	@python3 check_map.py $(MAP2)
+$(PRG_C): $(SRC_C)
+	cl65 -t c64 -O -Iultimateii --mapfile $(MAP_C) -o $@ $(SRC_C)
+	@python3 check_map.py $(MAP_C)
 
 clean:
-	rm -f $(PRG) $(MAP) $(PRG2) $(MAP2) *.o ultimateii/*.o
+	rm -f $(PRG) $(MAP) $(PRG_C) $(MAP_C) *.o ultimateii/*.o
