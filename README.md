@@ -53,15 +53,21 @@ third-party package, no account.
 
 ## Quick start
 
+Grab the current release from
+[**Releases**](https://github.com/k6lcm/c64u-radar/releases/latest) — it
+ships `c64u_radar.prg` and a zipped `server/` folder containing the
+Python server and per-OS launcher scripts. (Same files live in this
+repo's [`server/`](server/) directory if you'd rather run from source.)
+
 1. On a computer on the same LAN as the C64U, run the server:
-   - **macOS**: double-click `executables/server_bundle/start_server_mac.command`
+   - **macOS**: double-click `server/start_server_mac.command`
      (first launch needs a right-click → Open, since the script isn't
      Apple-signed — see [`server/README.md`](server/README.md) for why).
-   - **Windows**: run `executables/server_bundle/start_server_windows.bat`.
-   - **Linux**: run `executables/server_bundle/start_server_mac_linux.sh`.
-   - Or directly: `python3 executables/server_bundle/ultimate_radar_server.py`
+   - **Windows**: run `server/start_server_windows.bat`.
+   - **Linux**: run `server/start_server_mac_linux.sh`.
+   - Or directly: `python3 server/ultimate_radar_server.py`
      (Python 3.9+).
-2. On the C64U: enable `Command Interface`, then run `executables/c64u_radar.prg`.
+2. On the C64U: enable `Command Interface`, then run `c64u_radar.prg`.
    Look under **Main Menu > MEMORY & ROMS** on the Commodore-branded C64
    Ultimate, or **Configure > C64 and Cartridge Settings** on other
    Ultimate 64 / 1541 Ultimate-II+ firmware. Menu location can vary by
@@ -117,8 +123,7 @@ python3 -m unittest test_ultimate_radar_server.py
 ```text
 c64u_radar/          C64 program source (6502 asm shipping build +
                      legacy cc65 C reference), Makefile, native test harness
-server/              Python server source and tests
-executables/         Prebuilt PRG and a ready-to-run server bundle
+server/              Python server source, launcher scripts, and tests
 assets/              Screenshots
 ```
 

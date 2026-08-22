@@ -3,7 +3,7 @@
 
 # Primary build: 6502 assembly (contributed by @buck5125). Smaller and lower
 # per-frame overhead than the legacy cc65 C build; this is the .prg shipped
-# in executables/ and referenced from the top-level README.
+# as an asset on each GitHub release.
 PRG  = c64u_radar.prg
 MAP  = c64u_radar.map
 SRC  = c64u_radar.asm ultimateii/ultimate_lib.c
