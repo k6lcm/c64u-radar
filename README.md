@@ -10,6 +10,10 @@ The C64 can't handle encrypted network traffic so a small server on your compute
 
 ## Version history
 
+Client and server ship in lockstep — one version number covers both. Bump
+both when either changes.
+
+- **v0.4asm** — main build switched to the 6502 assembly source by [@buck5125](https://github.com/buck5125). Invalid ICAO / out-of-range location is now caught in the menu (via a preflight fetch) instead of drawing the scope and then reporting a bad code.
 - **v0.3** — track table enhancements: climb/descent glyphs, ground tracks in grey, auto QNH.
 - **v0.2** — range set via menu: new menu item to set range (3..99), in multiples of 3.
 - **v0.1** — first public beta.
@@ -77,13 +81,15 @@ make clean all
 Fails the build if the program/data exceeds the fixed `$5A00` sprite memory
 block — this is checked automatically by `check_map.py`.
 
-`make` also builds `c64u_radar2.prg` from `c64u_radar2.asm`, a hand-written
-6502 assembly port of the same program contributed by
-[@buck5125](https://github.com/buck5125). It is smaller and has less
-per-frame overhead than the cc65 build, and is kept here for people who want
-to build and experiment with it. The C version remains the reference
-implementation and is the only one shipped as a release download, so if you
-just want to run the radar, use `c64u_radar.prg` above.
+`c64u_radar.prg` is built from `c64u_radar.asm`, a hand-written 6502 assembly
+version contributed by [@buck5125](https://github.com/buck5125). It is smaller
+and has less per-frame overhead than the earlier cc65 C build, and is the
+shipping build going forward.
+
+The original cc65 C source is retained as a reference implementation of the
+same design and to back the native `host_test/` harness below. Build it with
+`make c64u_radar_c.prg` if you want to compare or experiment; it is not part
+of `make all`.
 
 **Native logic harness** (no C64 emulator; compiles the real radar source
 against a fake 64K RAM and a mocked Ultimate network API, using your system's
@@ -109,8 +115,8 @@ python3 -m unittest test_ultimate_radar_server.py
 ## Repository layout
 
 ```text
-c64u_radar/          C64 program source (cc65 C + 6502 asm port), Makefile,
-                     native test harness
+c64u_radar/          C64 program source (6502 asm shipping build +
+                     legacy cc65 C reference), Makefile, native test harness
 server/              Python server source and tests
 executables/         Prebuilt PRG and a ready-to-run server bundle
 assets/              Screenshots
@@ -132,8 +138,9 @@ debug endpoints (`/traffic.txt`, `/status.json`, etc.).
 - C64 Ultimate command interface: the `ultimateii` library in
   `c64u_radar/ultimateii/`, by Scott Hutter and Francesco Sblendorio
   ([1541ultimate2](https://github.com/markusC64/1541ultimate2)), GPL-3.
-- 6502 assembly port (`c64u_radar/c64u_radar2.asm`), plus the v0.2 range menu
-  and v0.3 track-table work: [@buck5125](https://github.com/buck5125).
+- 6502 assembly build (`c64u_radar/c64u_radar.asm`) — now the shipping
+  version — plus the v0.2 range menu, v0.3 track-table work, and the v0.4
+  in-menu location validation: [@buck5125](https://github.com/buck5125).
 
 ## License
 

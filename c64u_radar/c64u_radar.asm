@@ -77,6 +77,24 @@ __EXEHDR__:
     .import  _uii_data                ; global: unsigned char uii_data[640+2]
 
 ; ---------------------------------------------------------------------------
+; Linker-generated BSS bounds. cc65's crt0 zeroes this range on startup so
+; every C static (uii_status, uii_data, uii_data_index, ...) starts at 0.
+; Our SYS entry bypasses crt0, so `start:` below has to zero it manually --
+; otherwise the first uii_success() reads garbage and fetch() reports
+; ST_DOWN forever.
+; ---------------------------------------------------------------------------
+    .import  __BSS_RUN__
+    .import  __BSS_SIZE__
+
+; ---------------------------------------------------------------------------
+; cc65 heap initializer. uii_tcpconnect / uii_connect and uii_socketwrite
+; call malloc(), so the arena must be initialized before the first fetch.
+; initheap lives in the one-shot ONCE segment, whose run address deliberately
+; overlaps the start of BSS. It must therefore run before BSS is cleared.
+; ---------------------------------------------------------------------------
+    .import  initheap
+
+; ---------------------------------------------------------------------------
 ; KERNAL entry points
 ; ---------------------------------------------------------------------------
 GETIN       = $FFE4                   ; get key from buffer (A=0 if empty)
@@ -152,10 +170,11 @@ LOC_TEXT_ADDR = $CA60
 
 ; STATE_ADDR byte offsets (matches C #defines)
 ;   +0  sock
-;   +1  link_down_displayed
+;   +1  block_render
 ;   +2  server_source
 ;   +3  cs_hotkey
 ;   +4  location_mode
+;   +5  bad_location
 
 ; Keyboard decode tables (KERNAL ROM)
 KEYTAB_UNSHIFT   = $EB81
@@ -244,7 +263,7 @@ bmask: .byte $80,$40,$20,$10,$08,$04,$02,$01
 
 ; Menu strings (PETSCII, null-terminated)
 ; Drawn by menu_putsxy via direct screen/color RAM writes.
-str_title:    .byte "C64U RADAR V0.3asm",0
+str_title:    .byte "C64U RADAR V0.4asm",0
 str_opt_hdr:  .byte "Choose an option to center your scope:",0
 str_opt1:     .byte "1. CENTER ON LAT/LONG",0
 str_opt2:     .byte "2. CENTER ON ICAO AIRPORT CODE",0
@@ -261,6 +280,7 @@ str_enter_ip: .byte "ENTER SERVER IP ADDRESS",0
 str_ip_lbl:   .byte "IP: ",0
 str_invalid_ip:.byte "INVALID IP ADDRESS",0
 str_press_key:.byte "PRESS A KEY",0
+str_loc_nf:   .byte "LOCATION NOT FOUND",0
 str_lat_hdr:  .byte "ENTER LAT / LONG",0
 str_fmt:      .byte "FORMAT: SIGNED DECIMAL DEGREES",0
 str_lat_rng:  .byte "LATITUDE:  -90 TO 90",0
@@ -1780,6 +1800,8 @@ cc_save_p: .res 1
 .proc init_video
     lda  #$0B
     sta  VIC_CTRL1           ; display off during switch
+    lda  #0
+    sta  VIC_SPR_EN          ; sprites off before display returns
     lda  CIA2_DDRA
     ora  #$03
     sta  CIA2_DDRA           ; PA0/PA1 = outputs
@@ -2650,6 +2672,8 @@ fck_target: .res 1
     sta  STATE_ADDR+2
     lda  #LOC_DEFAULT
     sta  STATE_ADDR+4
+    lda  #0
+    sta  STATE_ADDR+5       ; bad_location = 0
     ; strcpy(feed_host, FEED_HOST_DEFAULT)
     lda  #<FEED_HOST_ADDR
     sta  ptr1
@@ -3569,6 +3593,32 @@ ri_start_y: .res 1
     lda  #0
     sta  $D021              ; bgcolor black
     sta  $D020              ; bordercolor black
+
+    lda  STATE_ADDR+5       ; bad_location
+    beq  @outer
+    lda  #6
+    sta  tmp1
+    lda  #16
+    sta  tmp2
+    lda  #<str_loc_nf
+    sta  ptr2
+    lda  #>str_loc_nf
+    sta  ptr2+1
+    jsr  menu_putsxy
+    lda  #6
+    sta  tmp1
+    lda  #18
+    sta  tmp2
+    lda  #<str_press_key
+    sta  ptr2
+    lda  #>str_press_key
+    sta  ptr2+1
+    jsr  menu_putsxy
+@wk_loc:
+    jsr  GETIN
+    beq  @wk_loc
+    lda  #0
+    sta  STATE_ADDR+5
 
 @outer:
     ; Set current-color BEFORE CLR so KERNAL fills color RAM from $0286.
@@ -5159,45 +5209,110 @@ start:
     ldx  #$FF
     txs
 
-    ; Initialise the cc65 software stack pointer (sp at $FD/$FE).
-    ; cc65's crt0.s normally does this; we must do it ourselves.
-    ; Stack grows DOWN from $5A00 (the hard ceiling set in the linker config).
+    ; Initialise cc65's software stack pointer. The linker assigns `sp` in
+    ; zero page (it is $02/$03 in the stock C64 configuration); use the
+    ; imported symbol rather than assuming a fixed address.
+    ; Stack grows down from $5A00, above the program/BSS ceiling.
     lda  #$00
-    sta  $FD                ; sp lo = $00
+    sta  sp
     lda  #$5A
-    sta  $FE                ; sp hi = $5A  →  sp = $5A00
-    ; cc65 C-stack pointer (c_sp at ZP $02/$03) must also be initialized.
-    ; crt0 usually keeps c_sp in sync with sp; asm entry must do it manually.
-    lda  $FD
-    sta  $02                ; c_sp lo
-    lda  $FE
-    sta  $03                ; c_sp hi
+    sta  sp+1
+
+    ; Initialize malloc while initheap's ONCE code is still present. ONCE
+    ; shares its run address with BSS, so clearing BSS before this call would
+    ; replace initheap's first opcode with $00 (BRK) and return to BASIC.
+    jsr  initheap
+
+    ; Zero the C BSS. cc65's crt0 does this before main(); our SYS entry
+    ; bypasses crt0, so ultimate_lib.c's globals (uii_status[], uii_data[],
+    ; uii_data_index, uii_data_len, temp_string_onechar[]) would otherwise
+    ; contain whatever RAM held at load time. First uii_success() then
+    ; reads a non-'0' status byte and every fetch() returns ST_DOWN.
+    ; This intentionally reclaims the now-finished ONCE segment as BSS.
+    lda  #<__BSS_RUN__
+    sta  ptr1
+    lda  #>__BSS_RUN__
+    sta  ptr1+1
+    lda  #0
+    tay
+    ldx  #>__BSS_SIZE__     ; number of whole pages
+    beq  @bss_tail
+@bss_page:
+    sta  (ptr1),y
+    iny
+    bne  @bss_page
+    inc  ptr1+1
+    dex
+    bne  @bss_page
+@bss_tail:
+    ldx  #<__BSS_SIZE__     ; leftover bytes in final partial page
+    beq  @bss_done
+@bss_partial:
+    sta  (ptr1),y
+    iny
+    dex
+    bne  @bss_partial
+@bss_done:
+
     jsr  init_config
     jsr  copy_charset
 
 @main_loop:
     jsr  init_text_video
     jsr  setup_location
+    ; preflight fetch before video init: catches bad location without drawing the radar
+    lda  #1
+    sta  STATE_ADDR+1       ; block_render=1, suppress render_targets during preflight
+    jsr  fetch
+    sta  main_status
+    cmp  #ST_LOCATION
+    bne  @pf_check_exit
+    lda  #1
+    sta  STATE_ADDR+5       ; bad_location = 1
+    jmp  @exit_inner
+@pf_check_exit:
+    cmp  #ST_EXIT
+    bne  @pf_setup_video
+    jmp  @exit_inner
+@pf_setup_video:
     jsr  init_video
     jsr  init_sprites
     jsr  draw_static_scope
     lda  #0
-    sta  STATE_ADDR+1       ; link_down_displayed = 0
-    lda  #ST_WAIT
+    sta  STATE_ADDR+1       ; block_render = 0
+    lda  main_status
+    cmp  #ST_DOWN
+    bne  @pf_not_down
+    jsr  show_link_down
+    jmp  @inner_loop
+@pf_not_down:
+    cmp  #ST_BAD
+    beq  @pf_show_status
+    jsr  render_targets
+@pf_show_status:
+    lda  main_status
     jsr  show_status_w
 
 @inner_loop:
+    jsr  wait_jiffies
+    bne  @exit_inner
     jsr  fetch
     sta  main_status
     cmp  #ST_EXIT
     beq  @exit_inner
+    cmp  #ST_LOCATION
+    bne  @not_location
+    lda  #1
+    sta  STATE_ADDR+5       ; bad_location = 1
+    jmp  @exit_inner
+@not_location:
     cmp  #ST_DOWN
     bne  @not_down
-    lda  STATE_ADDR+1       ; link_down_displayed
+    lda  STATE_ADDR+1       ; block_render
     bne  @skip_down
     jsr  show_link_down
 @skip_down:
-    jmp  @wait
+    jmp  @inner_loop
 @not_down:
     ; not down: if link was down, reinitialise display
     lda  STATE_ADDR+1
@@ -5211,9 +5326,6 @@ start:
 @no_reinit:
     lda  main_status
     jsr  show_status_w
-@wait:
-    jsr  wait_jiffies
-    bne  @exit_inner
     jmp  @inner_loop
 @exit_inner:
     jmp  @main_loop

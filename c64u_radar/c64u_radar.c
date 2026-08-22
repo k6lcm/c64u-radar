@@ -140,6 +140,7 @@ static unsigned char* const blob = MEM(0xC900);
 #define server_source       (*(unsigned char*)MEM(STATE_ADDR + 2))
 #define cs_hotkey           (*(unsigned char*)MEM(STATE_ADDR + 3))
 #define location_mode       (*(unsigned char*)MEM(STATE_ADDR + 4))
+#define bad_location        (*(unsigned char*)MEM(STATE_ADDR + 5))
 static char* const feed_request = (char*)MEM(0xCA00);
 static char* const feed_host = (char*)MEM(0xCA30);
 static char* const scope_label1 = (char*)MEM(0xCA40);
@@ -271,6 +272,7 @@ static unsigned char mailbox_poll(void)
 static void init_config(void)
 {
     server_source = location_mode = SERVER_UNSET;
+    bad_location = 0;
     strcpy(feed_host, FEED_HOST);
     feed_request[0] = 0;
     scope_label1[0] = 0;
@@ -507,6 +509,17 @@ static void setup_location(void)
     textcolor(COLOR_LIGHTGREEN);
     bgcolor(COLOR_BLACK);
     bordercolor(COLOR_BLACK);
+
+    /* The main loop's preflight fetch sets bad_location when the server
+       reports the current center is unknown (ICAO not in the airport table,
+       or lat/long outside its coverage). Surface that here on menu re-entry
+       rather than letting the radar draw over the report.                  */
+    if (bad_location) {
+        menu_putsxy(6, 16, "LOCATION NOT FOUND");
+        menu_putsxy(6, 18, "PRESS A KEY");
+        cgetc();
+        bad_location = 0;
+    }
 
     for (;;) {
         clrscr();
@@ -834,6 +847,10 @@ static void copy_charset(void)
 static void init_video(void)
 {
     POKE(0xD011, 0x0B);                           /* display off during mode switch */
+    POKE(0xD015, 0);                              /* sprites off: stops stale
+                                                     bank-0 sprite pointers
+                                                     from painting garbage
+                                                     when the display returns */
     POKE(0xDD02, PEEK(0xDD02) | 0x03);            /* CIA2 PA0/PA1 outputs  */
     POKE(0xDD00, (PEEK(0xDD00) & 0xFC) | 0x02);   /* VIC bank 1 ($4000)    */
     POKE(0xD018, 0x78);                           /* matrix $5C00, bmp $6000 */
@@ -1096,14 +1113,35 @@ int main(void)
         unsigned char status;
         init_text_video();
         setup_location();
+
+        /* Preflight fetch BEFORE init_video, so a server that rejects the
+           chosen center (ST_LOCATION) or exits (ST_EXIT) never causes the
+           radar to be drawn just to be replaced by a message a moment later.
+           link_down_displayed already gates render_targets() inside fetch();
+           set it here to suppress that render during the preflight, then
+           clear it once we know we're staying and the scope is drawn.      */
+        link_down_displayed = 1;
+        status = fetch();
+        if (status == ST_LOCATION) { bad_location = 1; continue; }
+        if (status == ST_EXIT) continue;
+
         init_video();
         init_sprites();
         draw_static_scope();
         link_down_displayed = 0;
-        show_status(ST_WAIT);
+
+        if (status == ST_DOWN) {
+            show_link_down();
+        } else {
+            if (status != ST_BAD) render_targets();
+            show_status(status);
+        }
+
         for (;;) {
+            if (wait_jiffies(POLL_JIF)) break;
             status = fetch();
             if (status == ST_EXIT) break;
+            if (status == ST_LOCATION) { bad_location = 1; break; }
             if (status == ST_DOWN) {
                 if (!link_down_displayed) show_link_down();
             } else {
@@ -1116,7 +1154,6 @@ int main(void)
                 }
                 show_status(status);
             }
-            if (wait_jiffies(POLL_JIF)) break;
         }
     }
     return 0;
