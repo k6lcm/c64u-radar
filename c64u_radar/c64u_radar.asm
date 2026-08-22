@@ -77,6 +77,24 @@ __EXEHDR__:
     .import  _uii_data                ; global: unsigned char uii_data[640+2]
 
 ; ---------------------------------------------------------------------------
+; Linker-generated BSS bounds. cc65's crt0 zeroes this range on startup so
+; every C static (uii_status, uii_data, uii_data_index, ...) starts at 0.
+; Our SYS entry bypasses crt0, so `start:` below has to zero it manually --
+; otherwise the first uii_success() reads garbage and fetch() reports
+; ST_DOWN forever.
+; ---------------------------------------------------------------------------
+    .import  __BSS_RUN__
+    .import  __BSS_SIZE__
+
+; ---------------------------------------------------------------------------
+; cc65 heap initializer. uii_tcpconnect / uii_connect and uii_socketwrite
+; call malloc(), so the arena must be initialized before the first fetch.
+; initheap lives in the one-shot ONCE segment, whose run address deliberately
+; overlaps the start of BSS. It must therefore run before BSS is cleared.
+; ---------------------------------------------------------------------------
+    .import  initheap
+
+; ---------------------------------------------------------------------------
 ; KERNAL entry points
 ; ---------------------------------------------------------------------------
 GETIN       = $FFE4                   ; get key from buffer (A=0 if empty)
@@ -5191,19 +5209,51 @@ start:
     ldx  #$FF
     txs
 
-    ; Initialise the cc65 software stack pointer (sp at $FD/$FE).
-    ; cc65's crt0.s normally does this; we must do it ourselves.
-    ; Stack grows DOWN from $5A00 (the hard ceiling set in the linker config).
+    ; Initialise cc65's software stack pointer. The linker assigns `sp` in
+    ; zero page (it is $02/$03 in the stock C64 configuration); use the
+    ; imported symbol rather than assuming a fixed address.
+    ; Stack grows down from $5A00, above the program/BSS ceiling.
     lda  #$00
-    sta  $FD                ; sp lo = $00
+    sta  sp
     lda  #$5A
-    sta  $FE                ; sp hi = $5A  →  sp = $5A00
-    ; cc65 C-stack pointer (c_sp at ZP $02/$03) must also be initialized.
-    ; crt0 usually keeps c_sp in sync with sp; asm entry must do it manually.
-    lda  $FD
-    sta  $02                ; c_sp lo
-    lda  $FE
-    sta  $03                ; c_sp hi
+    sta  sp+1
+
+    ; Initialize malloc while initheap's ONCE code is still present. ONCE
+    ; shares its run address with BSS, so clearing BSS before this call would
+    ; replace initheap's first opcode with $00 (BRK) and return to BASIC.
+    jsr  initheap
+
+    ; Zero the C BSS. cc65's crt0 does this before main(); our SYS entry
+    ; bypasses crt0, so ultimate_lib.c's globals (uii_status[], uii_data[],
+    ; uii_data_index, uii_data_len, temp_string_onechar[]) would otherwise
+    ; contain whatever RAM held at load time. First uii_success() then
+    ; reads a non-'0' status byte and every fetch() returns ST_DOWN.
+    ; This intentionally reclaims the now-finished ONCE segment as BSS.
+    lda  #<__BSS_RUN__
+    sta  ptr1
+    lda  #>__BSS_RUN__
+    sta  ptr1+1
+    lda  #0
+    tay
+    ldx  #>__BSS_SIZE__     ; number of whole pages
+    beq  @bss_tail
+@bss_page:
+    sta  (ptr1),y
+    iny
+    bne  @bss_page
+    inc  ptr1+1
+    dex
+    bne  @bss_page
+@bss_tail:
+    ldx  #<__BSS_SIZE__     ; leftover bytes in final partial page
+    beq  @bss_done
+@bss_partial:
+    sta  (ptr1),y
+    iny
+    dex
+    bne  @bss_partial
+@bss_done:
+
     jsr  init_config
     jsr  copy_charset
 
