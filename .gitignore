@@ -8,6 +8,10 @@ airports_cache.json
 /c64u_radar/*.o
 /c64u_radar/ultimateii/*.o
 
+# Version-stamped release copies produced by `make release`; the artifacts
+# are uploaded to the GitHub release, not committed.
+/c64u_radar/release/
+
 # Host test harness binary and its dumps
 /c64u_radar/host_test/harness
 /c64u_radar/host_test/bitmap.bin

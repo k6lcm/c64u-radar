@@ -13,6 +13,7 @@ The C64 can't handle encrypted network traffic so a small server on your compute
 Client and server ship in lockstep — one version number covers both. Bump
 both when either changes.
 
+- **v0.4.1** — fixed the `@` in the menu screen's YouTube URL rendering as the wrong character (off-by-one in the PETSCII→screen-code conversion).
 - **v0.4asm** — main build switched to the 6502 assembly source by [@buck5125](https://github.com/buck5125). Invalid ICAO / out-of-range location is now caught in the menu (via a preflight fetch) instead of drawing the scope and then reporting a bad code.
 - **v0.3** — track table enhancements: climb/descent glyphs, ground tracks in grey, auto QNH.
 - **v0.2** — range set via menu: new menu item to set range (3..99), in multiples of 3.
@@ -55,9 +56,10 @@ third-party package, no account.
 
 Grab the current release from
 [**Releases**](https://github.com/k6lcm/c64u-radar/releases/latest) — it
-ships `c64u_radar.prg` and a zipped `server/` folder containing the
-Python server and per-OS launcher scripts. (Same files live in this
-repo's [`server/`](server/) directory if you'd rather run from source.)
+ships the version-stamped `c64u_radar_0_4_1.prg` and a zipped `server/`
+folder containing the Python server and per-OS launcher scripts. (Same
+files live in this repo's [`server/`](server/) directory if you'd rather
+run from source.)
 
 1. On a computer on the same LAN as the C64U, run the server:
    - **macOS**: double-click `server/start_server_mac.command`
@@ -67,7 +69,7 @@ repo's [`server/`](server/) directory if you'd rather run from source.)
    - **Linux**: run `server/start_server_mac_linux.sh`.
    - Or directly: `python3 server/ultimate_radar_server.py`
      (Python 3.9+).
-2. On the C64U: enable `Command Interface`, then run `c64u_radar.prg`.
+2. On the C64U: enable `Command Interface`, then run `c64u_radar_0_4_1.prg`.
    Look under **Main Menu > MEMORY & ROMS** on the Commodore-branded C64
    Ultimate, or **Configure > C64 and Cartridge Settings** on other
    Ultimate 64 / 1541 Ultimate-II+ firmware. Menu location can vary by

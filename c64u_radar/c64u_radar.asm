@@ -263,7 +263,12 @@ bmask: .byte $80,$40,$20,$10,$08,$04,$02,$01
 
 ; Menu strings (PETSCII, null-terminated)
 ; Drawn by menu_putsxy via direct screen/color RAM writes.
-str_title:    .byte "C64U RADAR V0.4asm",0
+; "V0.4.1" -- the release version. Bump this, server/VERSION, APP_VERSION in
+; server/ultimate_radar_server.py, the version history in README.md, and the
+; changelog plus sample menu block in c64u_radar/README.md.  If the length of
+; this string changes, also recompute the title's centring column at "draw
+; title" below: x = (40 - len) / 2.
+str_title:    .byte "C64U RADAR V0.4.1",0
 str_opt_hdr:  .byte "Choose an option to center your scope:",0
 str_opt1:     .byte "1. CENTER ON LAT/LONG",0
 str_opt2:     .byte "2. CENTER ON ICAO AIRPORT CODE",0
@@ -3415,8 +3420,10 @@ au_digits: .res 3
     ora  #$40             ; PETSCII uppercase -> screen uppercase in lc/uc mode
     jmp  @store
 @not_hi_upper:
-    ; PETSCII low-set letters ($41-$5A) are lowercase in ca65 string literals
-    cmp  #$41
+    ; PETSCII low-set letters ($40-$5A) are lowercase in ca65 string literals.
+    ; Includes $40 ('@') so it maps to screen code $00 instead of falling
+    ; through unchanged and rendering as the wrong glyph.
+    cmp  #$40
     bcc  @not_lo_alpha
     cmp  #$5B
     bcs  @not_lo_alpha
@@ -3645,8 +3652,10 @@ ri_start_y: .res 1
     dex
     bne  @clrcl3
 
-    ; draw title
-    lda  #13
+    ; draw title, centred: x = (40 - len(str_title)) / 2.  Recompute this
+    ; when the version string changes length -- it is a fixed column, not a
+    ; centring routine, so the title drifts otherwise.
+    lda  #11
     sta  tmp1
     lda  #2
     sta  tmp2

@@ -8,6 +8,16 @@ PRG  = c64u_radar.prg
 MAP  = c64u_radar.map
 SRC  = c64u_radar.asm ultimateii/ultimate_lib.c
 
+# Release packaging. ../server/VERSION is the single source of truth for the
+# version number. `make release` copies the build output into release/ under
+# a version-stamped name (release/c64u_radar_0_4_1.prg) -- that copy is what
+# gets attached to the GitHub release. The build output itself stays
+# unversioned, and the stamped copy lives in its own directory so the two are
+# never confused for each other.
+VERSION     = $(shell cat ../server/VERSION)
+RELEASE_DIR = release
+PRG_RELEASE = $(RELEASE_DIR)/c64u_radar_$(subst .,_,$(VERSION)).prg
+
 # Legacy cc65 C build, retained as a reference implementation of the same
 # design (the host_test/ harness compiles against it). Not part of `make all`;
 # build explicitly with `make c64u_radar_c.prg`.
@@ -29,5 +39,13 @@ $(PRG_C): $(SRC_C)
 	cl65 -t c64 -O -Iultimateii --mapfile $(MAP_C) -o $@ $(SRC_C)
 	@python3 check_map.py $(MAP_C)
 
+release: $(PRG)
+	@mkdir -p $(RELEASE_DIR)
+	cp $(PRG) $(PRG_RELEASE)
+	@echo "release artifact: $(PRG_RELEASE)"
+
 clean:
 	rm -f $(PRG) $(MAP) $(PRG_C) $(MAP_C) *.o ultimateii/*.o
+	rm -rf $(RELEASE_DIR)
+
+.PHONY: all release clean
