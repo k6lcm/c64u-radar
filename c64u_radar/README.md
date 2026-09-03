@@ -5,6 +5,10 @@
 The 6502 assembly build (`c64u_radar.asm`) is the shipping version and was
 contributed by [@buck5125](https://github.com/buck5125).
 
+- **v0.4.1 (2026-09-02)** — fixed `menu_putsxy`'s PETSCII→screen-code
+  conversion: the "low-set letters" range check started at `$41` instead of
+  `$40`, so `@` ($40) fell through unconverted and rendered as the wrong
+  glyph. Broke the YouTube URL on the setup menu (`youtube.com/@levimaaia`).
 - **v0.4asm (2026-08-22)** — main build switched to `c64u_radar.asm`
   (buck5125). Invalid ICAO / out-of-range location is caught in the setup
   menu (via a preflight fetch before video init) instead of drawing the
@@ -29,7 +33,7 @@ and the user always picks a real center on the C64.
 The visible menu is:
 
 ```text
-C64U RADAR V0.4asm
+C64U RADAR V0.4.1
 Choose an option to center your scope:
 1. CENTER ON LAT/LONG
 2. CENTER ON ICAO AIRPORT CODE
@@ -81,6 +85,18 @@ make clean all
 
 Output: `c64u_radar.prg`, built from `c64u_radar.asm`. The build fails if
 program/data reaches the fixed sprite block at `$5A00`.
+
+For a release, `make release` copies that output into `release/` under a
+version-stamped name taken from `../server/VERSION`:
+
+```text
+c64u_radar.prg                     build output, always this name
+release/c64u_radar_0_4_1.prg       the copy attached to the GitHub release
+```
+
+Keeping the stamped copy in its own directory means the build output and
+the release artifact are never mistaken for each other. `release/` is
+gitignored; the artifact is uploaded to the GitHub release, not committed.
 
 The legacy cc65 C reference build is not part of `make all`. Build it
 explicitly if you want to compare:
