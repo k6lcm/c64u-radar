@@ -80,7 +80,7 @@ run from source.)
 
 If the automatic search doesn't work because the C64 Ultimate's command interface
 isn't reachable or discovery is blocked on your network, the `SERVER:` line
-stays empty.The IP address of the server is printed upon startup of the server's
+stays empty. The IP address of the server is printed upon startup of the server's
 command line interface.
 
 For example:
