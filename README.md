@@ -49,8 +49,9 @@ third-party package, no account.
   (worldwide, via a cached OurAirports lookup).
 - The server finds the C64U on the LAN and pushes its own address into a
   small mailbox in C64 memory over the C64 Ultimate's REST API — the server
-  address usually just fills itself in, with manual entry (`C= + S`) as a
-  fallback. See [`server/README.md`](server/README.md) for how this works.
+  address usually just fills itself in. When it doesn't, the server prints its
+  LAN IP at startup for manual entry (`C= + S`) on the C64. See
+  [`server/README.md`](server/README.md) for how this works.
 
 ## Quick start
 
@@ -76,6 +77,19 @@ run from source.)
    firmware version; if you don't see it in one place, check the other.
 3. Pick a center (latitude/longitude or ICAO code). The server address should
    already be filled in; if not, press `C= + S` to enter it manually.
+
+If the automatic search doesn't work — the C64 Ultimate's command interface
+isn't reachable, discovery is blocked on your network, or the `SERVER:` line
+stays empty — the server prints its own address on startup:
+
+```text
+Server address: 192.168.1.100:6464
+Status page:    http://192.168.1.100:6464/
+```
+
+Type that IP into the radar menu with `C= + S` and the C64 connects the same
+way it would after an automatic push. If several addresses are listed, use the
+one on the same LAN as the C64U.
 
 ## Building from source
 
