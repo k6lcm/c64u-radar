@@ -8,6 +8,10 @@ It works for airports worldwide. Point it at your local field and watch the appr
 
 The C64 can't handle encrypted network traffic so a small server on your computer and fetches live traffic from [adsb.fi](https://adsb.fi) and streams it on your LAN.
 
+Watch this [video demo](https://youtu.be/hZ8sniz4Z2M?si=-s4Dm2YlZwRVx9xd).
+
+[![NES Radar scope screen](assets/8bitradar-youtube.png)](https://youtu.be/hZ8sniz4Z2M?si=-s4Dm2YlZwRVx9xd)
+
 ## Version history
 
 Client and server ship in lockstep — one version number covers both. Bump
