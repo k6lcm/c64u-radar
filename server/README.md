@@ -6,7 +6,9 @@ consumed by the C64U program.
 
 ## Requirements
 
-- Python 3.9 or newer
+- Python 3.9 or newer. On macOS, install it from
+  [python.org](https://www.python.org/downloads/), with Homebrew, or with
+  `xcode-select --install` for Apple's copy.
 - An internet connection
 - The computer and C64U on the same LAN
 - The C64U Command Interface enabled
@@ -43,6 +45,35 @@ Status page:    http://192.168.1.100:6464/
 Allow incoming Python connections if the operating system firewall asks. The
 C64U Radar menu normally fills in this address itself — see below — but you
 can also enter it manually with `C= + S` on the C64 if needed.
+
+## Troubleshooting
+
+**`CERTIFICATE_VERIFY_FAILED` on macOS (ICAO codes come back "not found")**
+
+If the startup log shows lines like these, the server is running but every
+HTTPS download is being refused:
+
+```text
+ICAO WARNING: worldwide database unavailable; only 0 fallback airport(s) ...
+    [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate
+Cache warning:  <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] ...>
+```
+
+Without the airport list, every ICAO code typed on the C64 is reported as
+not found, and without the traffic feed the scope stays empty.
+
+The cause is the Python install, not the server. Python downloaded from
+python.org ships without a root-certificate bundle until a one-time script
+is run. To fix it:
+
+1. In Finder, open **Applications**, then the **Python 3.x** folder for the
+   version you installed.
+2. Double-click **Install Certificates.command** and let it finish.
+3. Start the server again. The log should now show
+   `ICAO database: 10,508 airport(s) available` with no warnings.
+
+Python from Homebrew or from the Xcode Command Line Tools uses the system
+certificate store and does not need this step.
 
 ## Automatic C64U server-address push
 
