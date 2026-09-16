@@ -74,6 +74,8 @@ run from source.)
    - **Linux**: run `server/start_server_mac_linux.sh`.
    - Or directly: `python3 server/ultimate_radar_server.py`
      (Python 3.9+).
+   - If the server starts with `CERTIFICATE_VERIFY_FAILED` warnings, see
+     [Troubleshooting](server/README.md#troubleshooting).
 2. On the C64U: enable `Command Interface`, then run `c64u_radar_0_4_1.prg`.
    Look under **Main Menu > MEMORY & ROMS** on the Commodore-branded C64
    Ultimate, or **Configure > C64 and Cartridge Settings** on other
