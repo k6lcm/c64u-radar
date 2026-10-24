@@ -131,6 +131,23 @@ HTTP debugging can request another center as well:
 /traffic.txt?icao=EGLL&range=9
 ```
 
+## Loading traffic as a PRG over HTTP
+
+Clients that can `LOAD` a URL, such as NES 64 with its Wi-Fi adapter, can
+fetch the same traffic as a C64 program file:
+
+```text
+LOAD"HTTP://192.168.1.100:6464/KSFO.PRG",10,1
+LOAD"HTTP://192.168.1.100:6464/KSFO-25.PRG",10,1
+```
+
+The path is the ICAO code, upper or lower case, with an optional `-` and a
+range in nm (1 to 100, the configured default otherwise). The file is a
+2-byte load address, `$A000`, then the wire blob below padded with zeros to
+232 bytes, so every reply is 234 bytes long. An unknown code or a bad range
+still returns a 234-byte file, with the location error flag set. HTTP
+`Range` and `HEAD` requests are answered.
+
 ## Wire compatibility
 
 Responses use the existing version-1 radar format:

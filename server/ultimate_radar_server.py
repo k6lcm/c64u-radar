@@ -28,6 +28,7 @@ import io
 import ipaddress
 import json
 import math
+import re
 import socket
 import socketserver
 import sys
@@ -125,6 +126,14 @@ MAGIC = b"LD"
 WIRE_VERSION = 1
 RECORD_SIZE = 28
 FLAG_LOCATION_ERROR = 0x04
+
+# NES 64 (and any C64 client that can LOAD a URL) fetches the same blob as a
+# PRG over HTTP: GET /KSFO.PRG, or /KSFO-25.PRG for a 25 nm range. The body
+# is a 2-byte little-endian load address, $A000, then the blob zero padded to
+# its maximum size, so every reply for the route has the same length.
+PRG_LOAD_ADDRESS = 0xA000
+PRG_BLOB_SIZE = 8 + MAX_AIRCRAFT * RECORD_SIZE
+PRG_PATH = re.compile(r"^/([A-Z0-9]{2,8})(?:-([0-9]+(?:\.[0-9]+)?))?\.PRG$", re.IGNORECASE)
 
 # C64 Ultimate REST API mailbox used to hand this server's address to a
 # running radar PRG. The PRG plants the magic at $CAC0; the server refuses to
@@ -522,6 +531,49 @@ def build_blob(snapshot: Snapshot) -> bytes:
 
 def build_location_error_blob() -> bytes:
     return MAGIC + bytes([WIRE_VERSION, FLAG_LOCATION_ERROR, 0, 0, 255, 0])
+
+
+def build_prg(blob: bytes) -> bytes:
+    if len(blob) > PRG_BLOB_SIZE:
+        raise AssertionError(f"blob is {len(blob)} bytes, expected at most {PRG_BLOB_SIZE}")
+    return PRG_LOAD_ADDRESS.to_bytes(2, "little") + blob.ljust(PRG_BLOB_SIZE, b"\x00")
+
+
+def scope_from_prg_path(
+    path: str,
+    default_scope: Scope,
+    airports: Mapping[str, Tuple[float, float]],
+) -> Optional[Scope]:
+    """Scope for a /ICAO.PRG or /ICAO-RANGE.PRG path, None if the path is not
+    that route. Raises ConfigurationError for an unknown ICAO or bad range."""
+    match = PRG_PATH.match(urllib.parse.unquote(path))
+    if not match:
+        return None
+    query = {"icao": [match.group(1)]}
+    if match.group(2):
+        query["range"] = [match.group(2)]
+    return scope_from_query(query, default_scope, airports)
+
+
+def parse_byte_range(header: Optional[str], size: int) -> Optional[Tuple[int, int]]:
+    """(start, end) inclusive for a single "bytes=" Range header, None when
+    there is no header or it is not one we understand (send the whole body).
+    Raises ValueError when the range cannot be satisfied."""
+    if not header:
+        return None
+    match = re.fullmatch(r"\s*bytes\s*=\s*(\d*)\s*-\s*(\d*)\s*", header)
+    if not match or not (match.group(1) or match.group(2)):
+        return None
+    if not match.group(1):
+        length = int(match.group(2))
+        if length == 0:
+            raise ValueError("empty suffix range")
+        return max(0, size - length), size - 1
+    start = int(match.group(1))
+    end = int(match.group(2)) if match.group(2) else size - 1
+    if start >= size or end < start:
+        raise ValueError("range not satisfiable")
+    return start, min(end, size - 1)
 
 
 def provider_url(base: str, scope: Scope) -> str:
@@ -1052,11 +1104,18 @@ class RadarRequestHandler(socketserver.BaseRequestHandler):
         data = b""
         try:
             data = self.request.recv(1024)
+            # An HTTP client may split its headers over several packets;
+            # keep reading so a Range header is not missed.
+            while data.startswith((b"GET ", b"HEAD ")) and b"\r\n\r\n" not in data and len(data) < 8192:
+                chunk = self.request.recv(1024)
+                if not chunk:
+                    break
+                data += chunk
         except (socket.timeout, ConnectionError, OSError):
             pass
 
         try:
-            if data.startswith(b"GET "):
+            if data.startswith((b"GET ", b"HEAD ")):
                 self._handle_http(data)
             else:
                 scope, warning = parse_location_command(data, server.config.default_scope, server.config.airports)
@@ -1072,13 +1131,42 @@ class RadarRequestHandler(socketserver.BaseRequestHandler):
                 print(f"{self.client_address[0]}: {error}", flush=True)
 
     def _handle_http(self, data: bytes) -> None:
+        lines = data.split(b"\r\n\r\n", 1)[0].splitlines()
+        self._head_only = data.startswith(b"HEAD ")
+        self._range = None
+        for header in lines[1:]:
+            name, _, value = header.decode("ascii", "replace").partition(":")
+            if name.strip().lower() == "range":
+                self._range = value.strip()
         try:
-            line = data.splitlines()[0].decode("ascii", "replace")
+            line = lines[0].decode("ascii", "replace")
             target = line.split()[1]
             parsed = urllib.parse.urlsplit(target)
+        except IndexError as error:
+            self._send_http(400, (str(error) + "\n").encode(), "text/plain; charset=utf-8")
+            return
+
+        try:
+            prg_scope = scope_from_prg_path(
+                parsed.path, self.server.config.default_scope, self.server.config.airports
+            )
+            prg_error = False
+        except (ValueError, ConfigurationError) as error:
+            if self.server.config.verbose:
+                print(f"{self.client_address[0]}: {error}", flush=True)
+            prg_scope, prg_error = None, True
+        if prg_error:
+            # Still a PRG, so the client loads it and shows the error flag.
+            self._send_http(200, build_prg(build_location_error_blob()), "application/octet-stream")
+            return
+        if prg_scope is not None:
+            self._send_http(200, build_prg(build_blob(self.server.traffic.get(prg_scope))), "application/octet-stream")
+            return
+
+        try:
             query = urllib.parse.parse_qs(parsed.query)
             scope = scope_from_query(query, self.server.config.default_scope, self.server.config.airports)
-        except (IndexError, ValueError, ConfigurationError) as error:
+        except (ValueError, ConfigurationError) as error:
             self._send_http(400, (str(error) + "\n").encode(), "text/plain; charset=utf-8")
             return
 
@@ -1114,22 +1202,41 @@ class RadarRequestHandler(socketserver.BaseRequestHandler):
                 f"Debug:\n"
                 f"  /traffic.txt\n"
                 f"  /traffic\n"
-                f"  /status.json\n"
+                f"  /status.json\n\n"
+                f"NES 64 / C64 URL load:\n"
+                f"  /KSFO.PRG  (or /KSFO-25.PRG for 25 nm), loads at $A000\n"
             ).encode()
             self._send_http(200, body, "text/plain; charset=utf-8")
         else:
             self._send_http(404, b"not found\n", "text/plain; charset=utf-8")
 
     def _send_http(self, status: int, body: bytes, content_type: str) -> None:
-        reason = {200: "OK", 400: "Bad Request", 404: "Not Found"}.get(status, "")
+        extra = ""
+        if status == 200:
+            extra = "Accept-Ranges: bytes\r\n"
+            try:
+                byte_range = parse_byte_range(getattr(self, "_range", None), len(body))
+            except ValueError:
+                status, extra, body = 416, f"Content-Range: bytes */{len(body)}\r\n", b""
+            else:
+                if byte_range is not None:
+                    start, end = byte_range
+                    status = 206
+                    extra += f"Content-Range: bytes {start}-{end}/{len(body)}\r\n"
+                    body = body[start:end + 1]
+        reason = {
+            200: "OK", 206: "Partial Content", 400: "Bad Request",
+            404: "Not Found", 416: "Range Not Satisfiable",
+        }.get(status, "")
         header = (
             f"HTTP/1.0 {status} {reason}\r\n"
             f"Content-Type: {content_type}\r\n"
             f"Content-Length: {len(body)}\r\n"
+            f"{extra}"
             "Cache-Control: no-store\r\n"
             "Connection: close\r\n\r\n"
         ).encode("ascii")
-        self.request.sendall(header + body)
+        self.request.sendall(header if getattr(self, "_head_only", False) else header + body)
 
 
 class RadarServer(socketserver.ThreadingMixIn, socketserver.TCPServer):

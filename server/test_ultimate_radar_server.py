@@ -435,6 +435,79 @@ class ServerProtocolTests(unittest.TestCase):
         self.assertTrue(response.startswith(b"HTTP/1.0 200 OK"))
         self.assertIn(b'"application": "C64 Ultimate Radar Server"', response)
 
+    def split_http(self, response):
+        head, _, body = response.partition(b"\r\n\r\n")
+        return head.decode("ascii").split("\r\n"), body
+
+    def test_http_prg_is_blob_at_a000(self):
+        self.config.airports["KSFO"] = (37.618806, -122.375417)
+        head, body = self.split_http(self.receive_all(b"GET /ksfo.prg HTTP/1.1\r\nHost: x\r\n\r\n"))
+        self.assertEqual(head[0], "HTTP/1.0 200 OK")
+        self.assertIn(f"Content-Length: {2 + radar.PRG_BLOB_SIZE}", head)
+        self.assertEqual(len(body), 2 + 8 + 8 * 28)
+        self.assertEqual(body[:2], b"\x00\xa0")
+        self.assertEqual(body[2:10], b"LD\x01\x00\x00\x00\x00\x00")
+        self.assertEqual(self.traffic.last_scope, radar.Scope(37.618806, -122.375417, HOME.range_nm).validated())
+
+    def test_http_prg_with_range_in_path(self):
+        self.config.airports["KSFO"] = (37.618806, -122.375417)
+        self.receive_all(b"GET /KSFO-25.PRG HTTP/1.1\r\n\r\n")
+        self.assertEqual(self.traffic.last_scope.range_nm, 25)
+
+    def test_http_prg_records_match_tcp_blob(self):
+        snapshot = radar.Snapshot(HOME, radar.extract_targets(fixture_payload(10), HOME), 10,
+                                  time.time(), time.monotonic(), time.monotonic(), False)
+        self.traffic.get = lambda scope: snapshot
+        self.config.airports["KSFO"] = (37.618806, -122.375417)
+        _, body = self.split_http(self.receive_all(b"GET /KSFO.PRG HTTP/1.0\r\n\r\n"))
+        self.assertEqual(body[2:], radar.build_blob(snapshot))
+
+    def test_http_prg_unknown_icao_is_location_error_prg(self):
+        head, body = self.split_http(self.receive_all(b"GET /ZZZZ.PRG HTTP/1.0\r\n\r\n"))
+        self.assertEqual(head[0], "HTTP/1.0 200 OK")
+        self.assertEqual(body[:10], b"\x00\xa0LD\x01\x04\x00\x00\xff\x00")
+        self.assertEqual(len(body), 2 + radar.PRG_BLOB_SIZE)
+        self.assertIsNone(self.traffic.last_scope)
+
+    def test_http_prg_bad_range_is_location_error_prg(self):
+        self.config.airports["KSFO"] = (37.618806, -122.375417)
+        _, body = self.split_http(self.receive_all(b"GET /KSFO-500.PRG HTTP/1.0\r\n\r\n"))
+        self.assertEqual(body[2:6], b"LD\x01\x04")
+
+    def test_http_prg_range_requests(self):
+        self.config.airports["KSFO"] = (37.618806, -122.375417)
+        size = 2 + radar.PRG_BLOB_SIZE
+        head, body = self.split_http(self.receive_all(
+            b"GET /KSFO.PRG HTTP/1.1\r\nRange: bytes=0-255\r\n\r\n"))
+        self.assertEqual(head[0], "HTTP/1.0 206 Partial Content")
+        self.assertIn(f"Content-Range: bytes 0-{size - 1}/{size}", head)
+        self.assertEqual(len(body), size)
+        head, body = self.split_http(self.receive_all(
+            b"GET /KSFO.PRG HTTP/1.1\r\nRange: bytes=2-9\r\n\r\n"))
+        self.assertIn(f"Content-Range: bytes 2-9/{size}", head)
+        self.assertEqual(body, b"LD\x01\x00\x00\x00\x00\x00")
+        head, body = self.split_http(self.receive_all(
+            b"GET /KSFO.PRG HTTP/1.1\r\nRange: bytes=256-511\r\n\r\n"))
+        self.assertEqual(head[0], "HTTP/1.0 416 Range Not Satisfiable")
+        self.assertIn(f"Content-Range: bytes */{size}", head)
+        self.assertEqual(body, b"")
+
+    def test_http_prg_head(self):
+        self.config.airports["KSFO"] = (37.618806, -122.375417)
+        head, body = self.split_http(self.receive_all(b"HEAD /KSFO.PRG HTTP/1.1\r\n\r\n"))
+        self.assertEqual(head[0], "HTTP/1.0 200 OK")
+        self.assertIn(f"Content-Length: {2 + radar.PRG_BLOB_SIZE}", head)
+        self.assertEqual(body, b"")
+
+    def test_parse_byte_range(self):
+        self.assertIsNone(radar.parse_byte_range(None, 10))
+        self.assertIsNone(radar.parse_byte_range("items=0-1", 10))
+        self.assertEqual(radar.parse_byte_range("bytes=0-", 10), (0, 9))
+        self.assertEqual(radar.parse_byte_range("bytes=-4", 10), (6, 9))
+        self.assertEqual(radar.parse_byte_range("bytes=3-99", 10), (3, 9))
+        with self.assertRaises(ValueError):
+            radar.parse_byte_range("bytes=10-", 10)
+
 
 if __name__ == "__main__":
     unittest.main()
